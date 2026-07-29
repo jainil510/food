@@ -1,0 +1,434 @@
+# Product Requirements Document (PRD)
+## FoodRush — Food Ordering Platform
+
+**Document Owner:** Product Management
+**Version:** 1.0
+**Status:** Draft for Development
+**Last Updated:** July 29, 2026
+
+---
+
+## 1. Executive Summary
+
+FoodRush is a full-stack food ordering web application inspired by platforms like Zomato and Swiggy. It allows users to discover restaurants, browse menus, add items to a cart, place orders, and view their order history — all through a clean, responsive interface.
+
+This is a **portfolio-grade MVP**, intended to demonstrate production-ready software engineering practices (clean architecture, secure authentication, RESTful API design, input validation, and responsive UI) without the complexity of a commercial-scale platform (no payments, no live tracking, no multi-vendor logistics).
+
+The system will be built with a **React + Tailwind CSS** frontend, a **Spring Boot + Spring Security (JWT)** backend, and a **MySQL** database, deployed on **Vercel (frontend), Render (backend), and Railway (database)**.
+
+---
+
+## 2. Problem Statement
+
+Discovering restaurants, comparing menus, and placing food orders online typically requires switching between multiple disconnected channels (phone calls, individual restaurant websites, or generic listings with no ordering capability). Users need a single, centralized platform where they can:
+
+- Discover nearby or listed restaurants
+- View menus with pricing and categories
+- Build an order via a cart
+- Check out and place an order
+- Track past orders for reference or reordering
+
+Restaurant/platform administrators also need a simple way to manage restaurant listings, food items, and view incoming orders — without needing a separate complex back-office system.
+
+---
+
+## 3. Goals
+
+| Goal | Description |
+|---|---|
+| **G1** | Deliver a working end-to-end food ordering flow: browse → cart → checkout → order history |
+| **G2** | Demonstrate secure, token-based authentication using Spring Security + JWT |
+| **G3** | Showcase clean REST API design and layered backend architecture |
+| **G4** | Build a fully responsive UI usable on mobile, tablet, and desktop |
+| **G5** | Provide a lightweight admin panel for restaurant/menu/order management |
+| **G6** | Keep scope realistic for a solo developer to complete and deploy independently |
+
+---
+
+## 4. Success Metrics
+
+Since this is a portfolio project (not a live commercial product), success is measured by **engineering and functional completeness** rather than business KPIs.
+
+| Metric | Target |
+|---|---|
+| Core user flow completion (browse → order placed) | 100% functional, no critical bugs |
+| API response correctness (manual/automated testing) | All core endpoints tested and passing |
+| Mobile responsiveness | Fully usable on screens from 360px–1440px |
+| Auth security | Passwords hashed, JWT expiry enforced, protected routes verified |
+| Admin panel functionality | CRUD operations working for restaurants & food items |
+| Deployment | Publicly accessible, working demo link (frontend + backend + DB) |
+| Code quality | Modular folder structure, documented README, environment configs separated |
+
+---
+
+## 5. User Personas
+
+### Persona 1: The Student — "Aarav, 21"
+- Orders food frequently, budget-conscious
+- Wants fast search, clear pricing, quick reordering from history
+- Primarily uses mobile browser
+
+### Persona 2: The Working Professional — "Priya, 29"
+- Orders lunch/dinner during busy weekdays
+- Values speed, clean UI, and order history to reorder favorites
+- Uses both desktop (work) and mobile (commute)
+
+### Persona 3: The Family Planner — "Rohit, 38"
+- Orders for the whole family, needs to browse multiple items per restaurant
+- Wants clear menu categorization and easy cart quantity adjustments
+- Uses desktop/tablet at home
+
+### Persona 4: The Admin — "Platform Operator"
+- Manages restaurant and menu data
+- Needs to view incoming orders
+- Not a technical user; needs a simple, functional dashboard
+
+---
+
+## 6. User Stories
+
+### Authentication
+- As a user, I want to register with my email and password so that I can create an account.
+- As a user, I want to log in securely so that I can access my cart and order history.
+- As a user, I want my session to stay authenticated via a token so I don't have to log in repeatedly during a session.
+
+### Restaurant Discovery
+- As a user, I want to browse a list of restaurants so I can decide where to order from.
+- As a user, I want to search restaurants by name so I can quickly find a specific one.
+- As a user, I want to filter restaurants/food by category (e.g., cuisine type) so I can narrow down choices.
+- As a user, I want to view a restaurant's details and its menu so I know what's available.
+
+### Ordering
+- As a user, I want to add food items to my cart so I can build my order.
+- As a user, I want to update item quantities in my cart so I can adjust my order before checkout.
+- As a user, I want to remove items from my cart if I change my mind.
+- As a user, I want to check out and place my order so the restaurant can process it.
+- As a user, I want to view my past orders so I can track what I've ordered before.
+
+### Profile
+- As a user, I want to view and update my profile details (name, address, contact) so my information stays current.
+
+### Admin
+- As an admin, I want to add/edit/delete restaurants so the platform listing stays accurate.
+- As an admin, I want to add/edit/delete food items under a restaurant so menus stay current.
+- As an admin, I want to view all placed orders so I can monitor platform activity.
+
+---
+
+## 7. Functional Requirements
+
+### 7.1 User Module
+| ID | Requirement |
+|---|---|
+| FR-1 | Users can register with name, email, password, and phone number |
+| FR-2 | Passwords must be securely hashed (BCrypt) before storage |
+| FR-3 | Users can log in and receive a JWT access token |
+| FR-4 | Protected endpoints require a valid JWT in the request header |
+| FR-5 | Users can view/update their profile (name, address, phone) |
+
+### 7.2 Restaurant & Menu Module
+| ID | Requirement |
+|---|---|
+| FR-6 | Users can view a paginated list of restaurants |
+| FR-7 | Users can view a single restaurant's details (name, address, cuisine, rating, description) |
+| FR-8 | Users can view a restaurant's food menu, grouped by category |
+| FR-9 | Users can search restaurants by name (partial match) |
+| FR-10 | Users can filter restaurants/menu items by category/cuisine |
+
+### 7.3 Cart Module
+| ID | Requirement |
+|---|---|
+| FR-11 | Users can add a food item to their cart |
+| FR-12 | Users can update the quantity of an item in the cart |
+| FR-13 | Users can remove an item from the cart |
+| FR-14 | Cart should restrict items to a single restaurant at a time (avoid multi-vendor complexity) |
+| FR-15 | Cart total should auto-calculate based on item price × quantity |
+
+### 7.4 Checkout & Order Module
+| ID | Requirement |
+|---|---|
+| FR-16 | Users can proceed to checkout from the cart |
+| FR-17 | Users must confirm a delivery address before placing an order |
+| FR-18 | Users can place an order, which creates an order record with status `PLACED` |
+| FR-19 | Users can view a list of their past orders with status and date |
+| FR-20 | Users can view details of a specific past order (items, quantity, total) |
+
+### 7.5 Admin Module
+| ID | Requirement |
+|---|---|
+| FR-21 | Admin can log in via a separate role-protected route |
+| FR-22 | Admin can create, update, delete restaurants |
+| FR-23 | Admin can create, update, delete food items under a restaurant |
+| FR-24 | Admin can view all orders placed on the platform |
+| FR-25 | Admin can update order status (e.g., `PLACED` → `CONFIRMED` → `DELIVERED`) |
+
+---
+
+## 8. Non-Functional Requirements
+
+| Category | Requirement |
+|---|---|
+| **Responsiveness** | UI must adapt cleanly across mobile, tablet, and desktop breakpoints using Tailwind CSS |
+| **Architecture** | Backend follows layered architecture: Controller → Service → Repository → Entity |
+| **Validation** | All input (registration, login, cart, checkout) validated on both frontend and backend |
+| **Error Handling** | Centralized exception handling in Spring Boot (`@ControllerAdvice`), meaningful error messages returned as JSON |
+| **Security** | Passwords hashed with BCrypt; JWT with expiry; role-based access control (USER vs ADMIN) |
+| **Performance** | Pagination implemented for restaurant listing and order history endpoints |
+| **UX** | Loading states/spinners shown during API calls; disabled buttons during submission |
+| **Maintainability** | Clear folder/module structure on both frontend and backend; environment variables used for secrets/config |
+| **Portability** | Application configs should support separate dev/prod environments (`.env`, `application-dev.yml`, `application-prod.yml`) |
+
+---
+
+## 9. Application Flow
+
+### 9.1 User Flow
+```
+Landing Page
+   │
+   ▼
+Register / Login (JWT issued)
+   │
+   ▼
+Browse Restaurants (search / filter / paginate)
+   │
+   ▼
+Restaurant Details → Food Menu
+   │
+   ▼
+Add Items to Cart → Update Quantity
+   │
+   ▼
+Checkout (confirm address)
+   │
+   ▼
+Place Order → Order Confirmation
+   │
+   ▼
+Order History → Order Details
+```
+
+### 9.2 Admin Flow
+```
+Admin Login
+   │
+   ▼
+Admin Dashboard
+   ├── Manage Restaurants (CRUD)
+   ├── Manage Food Items (CRUD)
+   └── View Orders (list + status update)
+```
+
+---
+
+## 10. Database Entities
+
+### 10.1 Entity Overview
+
+| Entity | Description |
+|---|---|
+| `User` | Registered platform users (customers) |
+| `Admin` | Admin/operator accounts (or a `role` field on User) |
+| `Restaurant` | Restaurant listings |
+| `FoodItem` | Menu items belonging to a restaurant |
+| `Category` | Cuisine/food category used for filtering |
+| `Cart` | A user's active cart |
+| `CartItem` | Line items within a cart |
+| `Order` | A placed order |
+| `OrderItem` | Line items within a placed order |
+| `Address` | User delivery address(es) |
+
+### 10.2 Key Fields (Simplified Schema)
+
+**User**
+- id, name, email (unique), password (hashed), phone, role (USER/ADMIN), created_at
+
+**Restaurant**
+- id, name, description, address, cuisine_type, rating, image_url, created_at
+
+**Category**
+- id, name (e.g., "North Indian", "Chinese", "Desserts")
+
+**FoodItem**
+- id, restaurant_id (FK), category_id (FK), name, description, price, image_url, is_available
+
+**Cart**
+- id, user_id (FK), restaurant_id (FK)
+
+**CartItem**
+- id, cart_id (FK), food_item_id (FK), quantity
+
+**Order**
+- id, user_id (FK), restaurant_id (FK), address_id (FK), total_amount, status, created_at
+
+**OrderItem**
+- id, order_id (FK), food_item_id (FK), quantity, price_at_order
+
+**Address**
+- id, user_id (FK), label, full_address, city, pincode
+
+### 10.3 Entity Relationship Summary
+
+| Relationship | Type |
+|---|---|
+| User → Address | 1:N |
+| User → Cart | 1:1 (active cart) |
+| User → Order | 1:N |
+| Restaurant → FoodItem | 1:N |
+| Category → FoodItem | 1:N |
+| Cart → CartItem | 1:N |
+| Order → OrderItem | 1:N |
+| FoodItem → CartItem / OrderItem | 1:N |
+
+---
+
+## 11. API Requirements
+
+### 11.1 Auth APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| POST | `/api/auth/register` | Register new user | Public |
+| POST | `/api/auth/login` | Login, returns JWT | Public |
+
+### 11.2 Restaurant APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/restaurants?page=&size=` | Paginated restaurant list | Public |
+| GET | `/api/restaurants/{id}` | Restaurant details | Public |
+| GET | `/api/restaurants/search?query=` | Search restaurants by name | Public |
+| GET | `/api/restaurants/{id}/menu?category=` | Menu, optionally filtered by category | Public |
+
+### 11.3 Cart APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/cart` | Get current user's cart | Authenticated |
+| POST | `/api/cart/items` | Add item to cart | Authenticated |
+| PUT | `/api/cart/items/{itemId}` | Update item quantity | Authenticated |
+| DELETE | `/api/cart/items/{itemId}` | Remove item from cart | Authenticated |
+
+### 11.4 Order APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| POST | `/api/orders` | Place order (checkout) | Authenticated |
+| GET | `/api/orders` | Get logged-in user's order history (paginated) | Authenticated |
+| GET | `/api/orders/{id}` | Get specific order details | Authenticated |
+
+### 11.5 User/Profile APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/users/me` | Get current user profile | Authenticated |
+| PUT | `/api/users/me` | Update profile | Authenticated |
+| POST | `/api/users/me/addresses` | Add a delivery address | Authenticated |
+
+### 11.6 Admin APIs
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| POST | `/api/admin/restaurants` | Create restaurant | Admin |
+| PUT | `/api/admin/restaurants/{id}` | Update restaurant | Admin |
+| DELETE | `/api/admin/restaurants/{id}` | Delete restaurant | Admin |
+| POST | `/api/admin/food-items` | Create food item | Admin |
+| PUT | `/api/admin/food-items/{id}` | Update food item | Admin |
+| DELETE | `/api/admin/food-items/{id}` | Delete food item | Admin |
+| GET | `/api/admin/orders` | View all orders (paginated) | Admin |
+| PUT | `/api/admin/orders/{id}/status` | Update order status | Admin |
+
+---
+
+## 12. Assumptions
+
+- A single user session orders from **one restaurant at a time** (no split-cart across restaurants).
+- Delivery is conceptual — no real-time courier assignment or GPS tracking is needed.
+- Order status transitions are manually updated by admin (no automated logistics engine).
+- All prices are in a single currency (no multi-currency support).
+- Image assets for restaurants/food items can be stored as URLs (e.g., hosted on a static bucket or placeholder service), not binary uploads, to keep scope manageable.
+- Only one admin role exists (no multi-tier admin permissions).
+
+---
+
+## 13. Constraints
+
+- Must be buildable and maintainable by a **solo developer**.
+- Must use the specified tech stack: React + Tailwind (frontend), Spring Boot + Spring Security + JWT (backend), MySQL (database).
+- Must be deployable on free/low-cost tiers: Vercel (frontend), Render (backend), Railway MySQL (database).
+- No payment gateway integration — checkout ends at "Place Order" (simulated payment, e.g., "Cash on Delivery" only).
+- No real-time features (notifications, live tracking, chat) — all data is fetched via standard REST calls, not WebSockets.
+- Timeline should be realistic for a portfolio project (weeks, not months of enterprise development).
+
+---
+
+## 14. Milestones
+
+| Phase | Milestone | Key Deliverables |
+|---|---|---|
+| **Phase 1** | Project Setup | Repo structure, DB schema, Spring Boot base project, React base project, CI-ready folder structure |
+| **Phase 2** | Authentication | Register/Login APIs, JWT issuing & validation, protected route middleware, frontend auth pages |
+| **Phase 3** | Restaurant & Menu Browsing | Restaurant list/detail APIs, search & filter, frontend browsing pages with pagination |
+| **Phase 4** | Cart & Checkout | Cart APIs, cart UI, checkout flow, address handling |
+| **Phase 5** | Orders | Order placement API, order history & detail APIs, frontend order history pages |
+| **Phase 6** | Admin Panel | Admin auth/role guard, restaurant & food item CRUD UI, order management view |
+| **Phase 7** | Polish & Deployment | Responsive QA, error/loading states, input validation pass, deployment to Vercel/Render/Railway, README + demo data seeding |
+
+---
+
+## 15. Future Enhancements
+
+*(Explicitly out of MVP scope, but noted for roadmap credibility)*
+
+- Online payment gateway integration (Razorpay/Stripe)
+- Real-time order tracking with live delivery status
+- Push/email notifications for order updates
+- AI-based restaurant/food recommendations
+- In-app chat support between user and restaurant/delivery
+- Multi-vendor cart (order from multiple restaurants in one checkout)
+- Coupons, discounts, and loyalty/rewards program
+- Ratings & reviews system for restaurants and food items
+- Favorites/wishlist feature
+
+---
+
+## 16. Risks
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Scope creep (adding "just one more feature") | Delays MVP completion | Strictly follow the defined MVP feature list; log extras under Future Enhancements |
+| JWT/security misconfiguration | Security vulnerability | Follow Spring Security best practices; test protected routes explicitly |
+| Free-tier deployment limitations (cold starts on Render, DB limits on Railway) | Slow demo performance | Document this as a known limitation; consider a "wake-up" note on the live demo |
+| Solo development bandwidth | Timeline slippage | Prioritize core flow (browse → cart → order) before admin panel polish |
+| Inconsistent API contracts between frontend/backend during parallel development | Integration bugs | Define and document API contracts (this PRD's Section 11) before implementation begins |
+
+---
+
+## 17. Acceptance Criteria
+
+The MVP is considered **complete and acceptable** when:
+
+- [ ] A user can register, log in, and receive/use a JWT for authenticated requests
+- [ ] A user can browse a paginated restaurant list and view individual restaurant details/menus
+- [ ] A user can search restaurants by name and filter by category
+- [ ] A user can add items to a cart, update quantities, and remove items
+- [ ] A user can complete checkout and place an order successfully
+- [ ] A user can view their order history and individual order details
+- [ ] A user can view and update their profile and address
+- [ ] An admin can log in and perform CRUD operations on restaurants and food items
+- [ ] An admin can view all orders and update order status
+- [ ] The UI is fully responsive across mobile, tablet, and desktop breakpoints
+- [ ] All forms have client-side and server-side validation with clear error messages
+- [ ] The application is deployed and publicly accessible (frontend, backend, database)
+
+---
+
+## 18. Nice-to-Have Features
+
+*(Not required for MVP, but low-effort additions if time permits)*
+
+- Dark mode toggle
+- "Reorder" button on past orders (re-adds items to cart)
+- Basic restaurant rating display (static/seeded, not user-submitted)
+- Skeleton loaders instead of basic spinners
+- Simple email confirmation on registration (non-blocking)
+- Sorting restaurants by rating or name
+- Empty-state illustrations for empty cart/no orders
+
+---
+
+*End of Document*

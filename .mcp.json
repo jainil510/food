@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "npx",
+      "args": [
+        "-y", "dotenv-cli",
+        "-e", ".env",
+        "--",
+        "npx", "-y", "@benborla29/mcp-server-mysql"
+      ],
+      "env": {
+        "ALLOW_INSERT_OPERATION": "false",
+        "ALLOW_UPDATE_OPERATION": "false",
+        "ALLOW_DELETE_OPERATION": "false"
+      }
+    },
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"]
+    }
+  }
+}
