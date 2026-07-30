@@ -4,15 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This is a **pre-implementation** repo: `backend/` and `frontend/` each contain only a one-line
-`README.md` stub — no `pom.xml`, no `package.json`, no source code yet. The only things that
-exist are planning artifacts and tooling config. Treat `.taskmaster/docs/prd.txt` (the PRD) and
-`.taskmaster/tasks/tasks.json` (17 dependency-ordered tasks) as the source of truth for scope and
-design — don't improvise architecture that contradicts them.
-
-Once Task 1 (scaffolding) has actually run, update this file's commands/architecture sections
-with real, verified specifics (actual Maven/npm scripts, actual package layout) instead of the
-planned values below.
+Task 1 (scaffolding) has run: `backend/` is a Spring Boot 4.1.0 + Java 21 project (`com.foodrush.backend`
+base package) with dev/prod profiles, a Flyway migration for the full schema, and JPA entities for
+all 9 domain tables, validated against the database. `frontend/` is a Vite + React project with
+Tailwind CSS v4 and the PRD's folder structure already in place. Treat `.taskmaster/docs/prd.txt`
+(the PRD) and `.taskmaster/tasks/tasks.json` (17 dependency-ordered tasks) as the source of truth
+for scope and design — don't improvise architecture that contradicts them.
 
 ## Working with Task Master
 
@@ -40,15 +37,19 @@ keys (`MYSQL_HOST/PORT/USER/PASS/DB`).
 
 ## Planned architecture (from the PRD — not yet built)
 
-**Backend:** Spring Boot 3.x, layered `controller -> service -> repository -> entity`, plus
-`dto`/`config`/`security`/`exception` packages. Spring Security + JWT (24h expiry, role claim
-`USER`/`ADMIN`) via a `JwtAuthenticationFilter`. MySQL via JPA, with separate dev/prod profiles
+**Backend:** Spring Boot 4.1.0 (not 3.x — 3.x is past Spring Initializr's support window as of
+2026-07-30), Java 21, base package `com.foodrush.backend`, layered
+`controller -> service -> repository -> entity`, plus `dto`/`config`/`security`/`exception`
+packages. Spring Security + JWT (24h expiry, role claim `USER`/`ADMIN`) via a
+`JwtAuthenticationFilter`. MySQL via JPA, with separate dev/prod profiles
 (`application-dev.yml` / `application-prod.yml`).
 
-**Frontend:** React 18 + Vite, `react-router-dom`, `axios`, Tailwind CSS. Folder layout:
-`src/components`, `src/pages`, `src/services`, `src/contexts`, `src/utils`, `src/hooks`. An
-`AuthContext` holds the JWT (in `localStorage`) and sets it as the axios default `Authorization`
-header; a response interceptor auto-logs-out on 401.
+**Frontend:** React 18 + Vite, `react-router-dom`, `axios`, Tailwind CSS v4 via `@tailwindcss/vite`
+(v4's Vite plugin supersedes the v3 postcss/autoprefixer toolchain), with breakpoints declared via
+`@theme` in `src/index.css` rather than a `tailwind.config.js`. Folder layout: `src/components`,
+`src/pages`, `src/services`, `src/contexts`, `src/utils`, `src/hooks`. An `AuthContext` holds the
+JWT (in `localStorage`) and sets it as the axios default `Authorization` header; a response
+interceptor auto-logs-out on 401.
 
 **Core entities:** `User`, `Restaurant`, `Category`, `FoodItem`, `Cart`/`CartItem`,
 `Order`/`OrderItem`, `Address` — full fields and FK relationships are in PRD section 10.
