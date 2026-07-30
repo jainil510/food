@@ -13,4 +13,7 @@ Requires the `foodrush_app` MySQL user (see `../database/setup_app_user.sql`) an
 
 ## Build
 
-    ./mvnw clean package
+    ./mvnw clean package -DskipTests
+
+(`contextLoads` boots the full `dev` Spring context and needs a live, migrated MySQL — skip it
+for a plain build, or export `DB_USERNAME`/`DB_PASSWORD` first and drop `-DskipTests`.)

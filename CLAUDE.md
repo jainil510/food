@@ -35,7 +35,13 @@ layer (JPA entities/migrations) or a manual `mysql` session as root — not thro
 connection. Connection settings live in `.env` (gitignored); see `.env.example` for the required
 keys (`MYSQL_HOST/PORT/USER/PASS/DB`).
 
-## Planned architecture (from the PRD — not yet built)
+The backend itself connects as a separate, non-MCP user: `foodrush_app`, a read/write MySQL user
+(see `database/setup_app_user.sql`) used for actually running the application (migrations, normal
+CRUD). Its credentials are the `DB_USERNAME`/`DB_PASSWORD` keys in `.env`/`.env.example` and are
+required to run the backend locally — distinct from the MCP server's read-only `foodrush_mcp`
+access above.
+
+## Architecture (built in Task 1, from the PRD)
 
 **Backend:** Spring Boot 4.1.0 (not 3.x — 3.x is past Spring Initializr's support window as of
 2026-07-30), Java 21, base package `com.foodrush.backend`, layered
@@ -44,7 +50,7 @@ packages. Spring Security + JWT (24h expiry, role claim `USER`/`ADMIN`) via a
 `JwtAuthenticationFilter`. MySQL via JPA, with separate dev/prod profiles
 (`application-dev.yml` / `application-prod.yml`).
 
-**Frontend:** React 18 + Vite, `react-router-dom`, `axios`, Tailwind CSS v4 via `@tailwindcss/vite`
+**Frontend:** React 18+ + Vite (currently ships React 19), `react-router-dom`, `axios`, Tailwind CSS v4 via `@tailwindcss/vite`
 (v4's Vite plugin supersedes the v3 postcss/autoprefixer toolchain), with breakpoints declared via
 `@theme` in `src/index.css` rather than a `tailwind.config.js`. Folder layout: `src/components`,
 `src/pages`, `src/services`, `src/contexts`, `src/utils`, `src/hooks`. An `AuthContext` holds the
@@ -78,10 +84,10 @@ pages, admin panel) → `16` error handling/validation/polish → `17` seeding/d
 Dependencies are encoded in `tasks.json`; use `task-master next` rather than assuming this order
 is strictly sequential.
 
-## Commands (documented in the task plan, not yet verified against a real project)
+## Commands
 
-These appear in `tasks.json` (Task 17) as the intended commands once the apps are scaffolded —
-confirm they match the actual generated project before relying on them:
+These are the real, verified commands for the scaffolded project (backend: Maven wrapper — no
+system Maven needed; frontend: npm):
 
 - Backend dev: `./mvnw spring-boot:run`
 - Backend build: `./mvnw clean package -DskipTests`
