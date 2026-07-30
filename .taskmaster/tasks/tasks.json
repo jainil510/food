@@ -2,243 +2,248 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Project Setup and Database Schema Implementation",
         "description": "Initialize Spring Boot backend, React frontend projects, configure MySQL database, and implement complete database schema with all entities and relationships",
         "details": "BACKEND:\n- Initialize Spring Boot 3.x project with dependencies: spring-boot-starter-web, spring-boot-starter-data-jpa, spring-boot-starter-security, mysql-connector-j, jjwt-api/impl/jackson (0.12.x), spring-boot-starter-validation, lombok\n- Configure application.yml with dev/prod profiles for MySQL connection (Railway)\n- Create JPA entities with proper relationships:\n  * User (id, name, email UNIQUE, password, phone, role ENUM(USER/ADMIN), createdAt)\n  * Restaurant (id, name, description, address, cuisineType, rating, imageUrl, createdAt)\n  * Category (id, name)\n  * FoodItem (id, restaurantId FK, categoryId FK, name, description, price, imageUrl, isAvailable)\n  * Cart (id, userId FK UNIQUE, restaurantId FK)\n  * CartItem (id, cartId FK, foodItemId FK, quantity)\n  * Order (id, userId FK, restaurantId FK, addressId FK, totalAmount, status ENUM, createdAt)\n  * OrderItem (id, orderId FK, foodItemId FK, quantity, priceAtOrder)\n  * Address (id, userId FK, label, fullAddress, city, pincode)\n- Use @OneToMany, @ManyToOne, cascade types, orphanRemoval appropriately\n- Add indexes on foreign keys and email\n- Create layered package structure: controller, service, repository, entity, dto, config, security, exception\n\nFRONTEND:\n- Initialize React 18+ with Vite\n- Install dependencies: react-router-dom, axios, tailwindcss, postcss, autoprefixer\n- Configure Tailwind CSS with custom breakpoints (mobile 360px, tablet 768px, desktop 1440px)\n- Create folder structure: src/components, src/pages, src/services, src/contexts, src/utils, src/hooks\n- Setup axios instance with baseURL pointing to backend API\n- Create environment variable files (.env.development, .env.production)\n\nDATABASE:\n- Create MySQL database schema with proper constraints, foreign keys, and indexes\n- Write SQL migration scripts or use Flyway/Liquibase for version control",
         "testStrategy": "- Verify Spring Boot application starts without errors\n- Verify React application compiles and runs\n- Test database connection from Spring Boot\n- Verify all JPA entities map correctly (use schema validation: validate)\n- Run SQL queries to confirm all tables created with correct relationships\n- Test Tailwind CSS configuration renders properly",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-07-30T19:32:48.259Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Authentication System with JWT and Spring Security",
         "description": "Implement complete authentication system with user registration, login, JWT token generation/validation, and Spring Security configuration for role-based access control",
         "details": "BACKEND:\n- Configure Spring Security 6.x with JWT authentication filter chain\n- Create JwtUtil class:\n  * generateToken(UserDetails) using HMAC-SHA256, store userId and role in claims, 24h expiry\n  * validateToken(token) verify signature and expiration\n  * extractUsername(token) parse claims\n- Implement UserDetailsService loading user by email\n- Create JwtAuthenticationFilter extending OncePerRequestFilter:\n  * Extract JWT from Authorization: Bearer header\n  * Validate and set SecurityContextHolder authentication\n- Configure SecurityFilterChain:\n  * Disable CSRF (stateless API)\n  * Permit /api/auth/**, /api/restaurants/**, /api/restaurants/{id}/menu (public)\n  * Require authentication for /api/cart/**, /api/orders/**, /api/users/**\n  * Require ADMIN role for /api/admin/**\n- Create AuthController:\n  * POST /api/auth/register: validate input (email format, password min 8 chars), hash password with BCryptPasswordEncoder strength 10, save User with role=USER, return success message\n  * POST /api/auth/login: authenticate credentials, generate JWT, return {token, userId, name, role}\n- Create DTOs: RegisterRequest, LoginRequest, AuthResponse\n- Implement @ControllerAdvice GlobalExceptionHandler for BadCredentialsException, DuplicateEmailException, ValidationException\n\nFRONTEND:\n- Create AuthContext with React Context API:\n  * State: {user: {id, name, email, role}, token, isAuthenticated}\n  * Methods: login(email, password), register(userData), logout(), checkAuth()\n  * Store token in localStorage, set axios default header: Authorization: Bearer {token}\n- Create pages/Register.jsx:\n  * Form: name, email, phone, password, confirmPassword\n  * Client validation: email regex, password match, phone format\n  * On submit: call /api/auth/register, show success/error message, redirect to login\n- Create pages/Login.jsx:\n  * Form: email, password\n  * On submit: call /api/auth/login, store token and user in AuthContext, redirect to home\n- Create ProtectedRoute component wrapping routes requiring authentication\n- Create AdminRoute component checking role === 'ADMIN'\n- Implement auto-logout on 401 response (axios interceptor)",
         "testStrategy": "- Unit test JwtUtil token generation and validation\n- Test registration with valid/invalid inputs (duplicate email, weak password)\n- Test login with correct/incorrect credentials\n- Test JWT expiry handling\n- Verify protected endpoints reject requests without token (401)\n- Verify admin endpoints reject USER role requests (403)\n- Test frontend: successful registration → login → token stored → authenticated requests succeed\n- Test logout clears token and redirects to login",
         "priority": "high",
         "dependencies": [
-          1
+          "1"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Restaurant and Category Management APIs",
         "description": "Implement backend APIs for restaurant CRUD, category management, restaurant listing with pagination, search, and filtering by category/cuisine",
         "details": "BACKEND:\n- Create CategoryRepository extending JpaRepository<Category, Long>\n- Create RestaurantRepository extending JpaRepository<Restaurant, Long>:\n  * Custom query: findByNameContainingIgnoreCase(String name, Pageable)\n  * Custom query: findByCuisineType(String cuisineType, Pageable)\n- Create RestaurantService:\n  * getAllRestaurants(int page, int size) return Page<RestaurantDTO>\n  * getRestaurantById(Long id) return RestaurantDTO or throw NotFoundException\n  * searchRestaurants(String query, int page, int size) partial match on name\n  * filterByCuisine(String cuisineType, int page, int size)\n- Create RestaurantController:\n  * GET /api/restaurants?page=0&size=10 return paginated list with {content, totalPages, totalElements, currentPage}\n  * GET /api/restaurants/{id} return single restaurant details\n  * GET /api/restaurants/search?query=pizza&page=0&size=10\n  * GET /api/restaurants?cuisine=Italian&page=0&size=10\n- Create CategoryController:\n  * GET /api/categories return all categories (for filter dropdowns)\n- Create DTOs: RestaurantDTO, CategoryDTO, PagedResponse<T>\n- Map entities to DTOs using ModelMapper or manual mapping\n\nADMIN APIs (secured with @PreAuthorize(\"hasRole('ADMIN')\")):\n- RestaurantAdminController:\n  * POST /api/admin/restaurants: validate input (name required, address required), save Restaurant\n  * PUT /api/admin/restaurants/{id}: validate, update existing restaurant\n  * DELETE /api/admin/restaurants/{id}: check no active orders, delete restaurant and cascade food items\n- Validate rating 0-5 range, ensure imageUrl is valid URL format",
         "testStrategy": "- Test pagination returns correct page size and total count\n- Test search with partial name match (case-insensitive)\n- Test filter by cuisine returns only matching restaurants\n- Test getRestaurantById with valid/invalid ID (404)\n- Test admin create restaurant with valid/invalid data\n- Test admin update restaurant\n- Test admin delete restaurant fails if orders exist\n- Verify endpoints respect public/admin access control\n- Load test with 100+ restaurants to verify pagination performance",
         "priority": "high",
         "dependencies": [
-          2
+          "2"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Food Item and Menu Management APIs",
         "description": "Implement backend APIs for food item CRUD, menu retrieval with category filtering, and admin management of food items",
         "details": "BACKEND:\n- Create FoodItemRepository extending JpaRepository<FoodItem, Long>:\n  * findByRestaurantId(Long restaurantId) return List<FoodItem>\n  * findByRestaurantIdAndCategoryId(Long restaurantId, Long categoryId)\n  * findByRestaurantIdAndIsAvailable(Long restaurantId, boolean isAvailable)\n- Create FoodItemService:\n  * getMenuByRestaurant(Long restaurantId, Long categoryId) return grouped menu items\n  * getFoodItemById(Long id) return FoodItemDTO\n  * Group items by category in response structure: {categoryName: [items]}\n- Create FoodItemController:\n  * GET /api/restaurants/{restaurantId}/menu?category={categoryId} return menu grouped by category\n  * If categoryId provided, filter to that category only\n  * Return structure: [{categoryName: \"Appetizers\", items: [{id, name, description, price, imageUrl, isAvailable}]}]\n- Create DTOs: FoodItemDTO, MenuResponse with nested structure\n\nADMIN APIs:\n- FoodItemAdminController:\n  * POST /api/admin/food-items: validate {restaurantId, categoryId, name, price > 0, description}, save FoodItem with isAvailable=true default\n  * PUT /api/admin/food-items/{id}: validate and update fields\n  * DELETE /api/admin/food-items/{id}: soft delete (set isAvailable=false) or hard delete if no order history\n  * PATCH /api/admin/food-items/{id}/availability: toggle isAvailable flag\n- Validate price is positive decimal, name not empty, restaurantId and categoryId exist (foreign key validation)",
         "testStrategy": "- Test menu retrieval returns all items grouped by category\n- Test category filter returns only items in that category\n- Test menu excludes unavailable items for users\n- Test admin can create food item with valid restaurant and category\n- Test admin create fails with non-existent restaurantId (404)\n- Test admin update price validation (negative rejected)\n- Test admin delete/toggle availability\n- Verify unavailable items don't appear in public menu\n- Test menu for restaurant with no items returns empty array",
         "priority": "high",
         "dependencies": [
-          3
+          "3"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Shopping Cart APIs and Business Logic",
         "description": "Implement cart management APIs with single-restaurant constraint, cart item CRUD operations, and automatic total calculation",
         "details": "BACKEND:\n- Create CartRepository extending JpaRepository<Cart, Long>:\n  * findByUserId(Long userId) return Optional<Cart>\n- Create CartItemRepository extending JpaRepository<CartItem, Long>:\n  * findByCartId(Long cartId)\n  * findByCartIdAndFoodItemId(Long cartId, Long foodItemId)\n- Create CartService:\n  * getOrCreateCart(Long userId) find existing or create new empty cart\n  * addItemToCart(Long userId, Long foodItemId, int quantity):\n    - Validate food item exists and isAvailable\n    - Get user's cart\n    - Check if cart.restaurantId is null or matches food item's restaurant\n    - If different restaurant, throw \"Cart can only contain items from one restaurant. Clear cart first?\"\n    - If same/null, set cart.restaurantId\n    - Check if item already in cart: update quantity (add), else create new CartItem\n    - Return updated CartDTO with items and total\n  * updateCartItem(Long userId, Long cartItemId, int quantity):\n    - Validate cartItem belongs to user's cart\n    - If quantity <= 0, delete CartItem\n    - Else update quantity\n  * removeCartItem(Long userId, Long cartItemId) delete CartItem\n  * clearCart(Long userId) delete all CartItems, set cart.restaurantId = null\n  * calculateTotal(Cart cart) sum of (item.foodItem.price * item.quantity) for all items\n- Create CartController:\n  * GET /api/cart: return current user's cart with {restaurantId, restaurantName, items: [{cartItemId, foodItemId, name, price, quantity, subtotal}], total}\n  * POST /api/cart/items: body {foodItemId, quantity}, add to cart\n  * PUT /api/cart/items/{cartItemId}: body {quantity}, update quantity\n  * DELETE /api/cart/items/{cartItemId}: remove item\n  * DELETE /api/cart: clear entire cart\n- Extract authenticated user ID from SecurityContextHolder.getContext().getAuthentication()\n- Create DTOs: CartDTO, CartItemDTO, AddToCartRequest",
         "testStrategy": "- Test add item to empty cart creates cart and sets restaurantId\n- Test add item from same restaurant succeeds\n- Test add item from different restaurant fails with clear error message\n- Test add existing item increments quantity instead of creating duplicate\n- Test update quantity to 0 removes item\n- Test remove item decreases cart size\n- Test clear cart removes all items and resets restaurantId\n- Test total calculation accuracy with multiple items and quantities\n- Test cart operations fail for unauthenticated users (401)\n- Test cartItem belongs to requesting user (prevent cross-user access)",
         "priority": "high",
         "dependencies": [
-          4
+          "4"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Address Management APIs",
         "description": "Implement user address CRUD APIs for managing delivery addresses",
         "details": "BACKEND:\n- Create AddressRepository extending JpaRepository<Address, Long>:\n  * findByUserId(Long userId) return List<Address>\n  * findByUserIdAndId(Long userId, Long addressId) for ownership verification\n- Create AddressService:\n  * getUserAddresses(Long userId) return list of user's addresses\n  * getAddressById(Long userId, Long addressId) verify ownership and return\n  * createAddress(Long userId, AddressRequest request) validate and save new address\n  * updateAddress(Long userId, Long addressId, AddressRequest request) validate ownership and update\n  * deleteAddress(Long userId, Long addressId) verify ownership and delete\n- Create AddressController:\n  * GET /api/users/me/addresses: return current user's addresses\n  * GET /api/users/me/addresses/{id}: return specific address\n  * POST /api/users/me/addresses: body {label, fullAddress, city, pincode}, create address\n  * PUT /api/users/me/addresses/{id}: update address\n  * DELETE /api/users/me/addresses/{id}: delete address\n- Validate: fullAddress not empty, pincode format (6 digits for India), city not empty\n- Create DTOs: AddressDTO, AddressRequest",
         "testStrategy": "- Test user can create multiple addresses\n- Test get addresses returns only current user's addresses\n- Test update address with valid/invalid data\n- Test delete address\n- Test user cannot access another user's addresses (403)\n- Test pincode validation (6 digits)\n- Test address required fields validation",
         "priority": "medium",
         "dependencies": [
-          2
+          "2"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Order Placement and Checkout APIs",
         "description": "Implement checkout flow and order placement APIs with cart-to-order conversion, order status management, and cart clearing",
         "details": "BACKEND:\n- Create OrderRepository extending JpaRepository<Order, Long>:\n  * findByUserId(Long userId, Pageable pageable) for order history\n  * findByUserIdAndId(Long userId, Long orderId) for ownership verification\n- Create OrderItemRepository extending JpaRepository<OrderItem, Long>\n- Create OrderService:\n  * placeOrder(Long userId, Long addressId):\n    - Get user's cart and validate not empty\n    - Validate address exists and belongs to user\n    - Validate all cart items still available\n    - Calculate total from cart\n    - Create Order entity: {userId, restaurantId from cart, addressId, totalAmount, status: PLACED, createdAt: now}\n    - For each CartItem, create OrderItem: {orderId, foodItemId, quantity, priceAtOrder: current food item price}\n    - Save order and orderItems\n    - Clear cart (delete cart items, reset cart.restaurantId)\n    - Return OrderDTO with order ID and confirmation\n  * getUserOrders(Long userId, int page, int size) return paginated order history, sorted by createdAt DESC\n  * getOrderById(Long userId, Long orderId):\n    - Verify order belongs to user\n    - Return order with items: {orderId, restaurantName, totalAmount, status, createdAt, deliveryAddress, items: [{foodItemName, quantity, priceAtOrder, subtotal}]}\n- Create OrderController:\n  * POST /api/orders: body {addressId}, place order from cart\n  * GET /api/orders?page=0&size=10: return user's order history\n  * GET /api/orders/{orderId}: return order details\n- Create order status ENUM: PLACED, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED\n- Create DTOs: PlaceOrderRequest, OrderDTO, OrderItemDTO, OrderDetailDTO",
         "testStrategy": "- Test place order with valid cart and address succeeds\n- Test place order with empty cart fails (400)\n- Test place order with non-existent addressId fails (404)\n- Test place order with address from different user fails (403)\n- Test order items capture price at time of order (priceAtOrder)\n- Test cart is cleared after successful order placement\n- Test order history returns only user's orders, sorted by date DESC\n- Test order details include all items with correct calculations\n- Test user cannot access another user's order (403)\n- Test pagination works correctly for users with many orders",
         "priority": "high",
         "dependencies": [
-          5,
-          6
+          "5",
+          "6"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "User Profile Management APIs",
         "description": "Implement user profile view and update APIs for managing user account information",
         "details": "BACKEND:\n- Create UserService:\n  * getUserProfile(Long userId) return UserDTO (exclude password)\n  * updateUserProfile(Long userId, UpdateProfileRequest request):\n    - Validate email format if changed\n    - Check email uniqueness if changed\n    - Validate phone format\n    - Update user fields: name, phone (email change optional/restricted for simplicity)\n    - Return updated UserDTO\n  * changePassword(Long userId, ChangePasswordRequest request):\n    - Verify old password matches\n    - Validate new password strength (min 8 chars)\n    - Hash and update password\n- Create UserController:\n  * GET /api/users/me: return current user profile {id, name, email, phone, createdAt}\n  * PUT /api/users/me: body {name, phone}, update profile\n  * PUT /api/users/me/password: body {oldPassword, newPassword}, change password\n- Extract authenticated userId from SecurityContext\n- Create DTOs: UserDTO, UpdateProfileRequest, ChangePasswordRequest",
         "testStrategy": "- Test get profile returns correct user data without password\n- Test update profile with valid data\n- Test update profile with duplicate email fails\n- Test update phone with invalid format fails\n- Test change password with correct old password succeeds\n- Test change password with incorrect old password fails (401)\n- Test new password validation (min length)\n- Test updated profile data persists correctly",
         "priority": "medium",
         "dependencies": [
-          2
+          "2"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Admin Order and Dashboard APIs",
         "description": "Implement admin-specific APIs for viewing all orders, updating order status, and dashboard statistics",
         "details": "BACKEND:\n- Create AdminOrderService:\n  * getAllOrders(int page, int size, String status):\n    - Return paginated all orders across all users\n    - Optionally filter by status if provided\n    - Include user and restaurant details in response\n    - Sort by createdAt DESC\n  * updateOrderStatus(Long orderId, OrderStatus newStatus):\n    - Validate status transition (e.g., cannot go from DELIVERED back to PLACED)\n    - Update order.status\n    - Return updated order\n  * getOrderStatistics() return {totalOrders, todayOrders, pendingOrders, revenue}\n- Create AdminOrderController:\n  * GET /api/admin/orders?page=0&size=20&status=PLACED: return all orders with filters\n  * GET /api/admin/orders/{orderId}: return detailed order view\n  * PUT /api/admin/orders/{orderId}/status: body {status}, update order status\n  * GET /api/admin/dashboard/stats: return dashboard statistics\n- Validate status transitions follow logical flow\n- Create DTOs: AdminOrderDTO (includes user info), OrderStatusUpdateRequest, DashboardStatsDTO",
         "testStrategy": "- Test admin can view all orders from all users\n- Test admin can filter orders by status\n- Test admin can update order status with valid transitions\n- Test invalid status transitions are rejected\n- Test dashboard statistics calculate correctly\n- Test non-admin users cannot access admin endpoints (403)\n- Test pagination works for large order volumes\n- Test order details include complete user and restaurant information",
         "priority": "medium",
         "dependencies": [
-          7
+          "7"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Frontend: Restaurant Discovery and Menu Browsing",
         "description": "Build responsive React pages for browsing restaurants, searching, filtering, viewing restaurant details, and menu display",
         "details": "COMPONENTS:\n- Create pages/Home.jsx:\n  * Hero section with search bar\n  * Featured restaurants section\n  * Call GET /api/restaurants on mount\n- Create pages/RestaurantList.jsx:\n  * Display restaurant cards in responsive grid (1 col mobile, 2 tablet, 3 desktop)\n  * Each card: image, name, cuisine type, rating, address\n  * Implement search input calling /api/restaurants/search?query=\n  * Category filter dropdown calling /api/restaurants?cuisine=\n  * Pagination controls (Previous/Next, page numbers)\n  * Loading skeleton while fetching\n  * Empty state if no results\n- Create pages/RestaurantDetail.jsx:\n  * Route: /restaurants/:id\n  * Fetch GET /api/restaurants/:id and /api/restaurants/:id/menu\n  * Display restaurant header: image, name, rating, cuisine, address, description\n  * Menu section grouped by categories\n  * Each food item card: image, name, description, price, \"Add to Cart\" button\n  * Category filter tabs for menu\n  * Quantity selector before adding to cart\n- Create components/RestaurantCard.jsx: reusable restaurant card\n- Create components/FoodItemCard.jsx:\n  * Display food item details\n  * Quantity selector (+/- buttons)\n  * \"Add to Cart\" button calling POST /api/cart/items\n  * Disable if not authenticated (show \"Login to order\")\n  * Handle different restaurant error (show modal to clear cart)\n- Create components/SearchBar.jsx: debounced search input (500ms)\n- Create components/CategoryFilter.jsx: dropdown fetching /api/categories\n- Create components/Pagination.jsx: reusable pagination controls\n\nSTYLING (Tailwind CSS):\n- Responsive grid: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3\n- Card shadows and hover effects\n- Loading states: animate-pulse skeleton screens\n- Empty states with illustrations/icons\n\nSTATE MANAGEMENT:\n- Use React hooks (useState, useEffect) for component state\n- Consider Context for cart count badge in navbar\n- Debounce search input to avoid excessive API calls",
         "testStrategy": "- Test restaurant list displays correctly on mobile/tablet/desktop\n- Test search returns filtered results\n- Test category filter works\n- Test pagination navigates through pages correctly\n- Test clicking restaurant card navigates to detail page\n- Test restaurant detail page displays menu grouped by category\n- Test add to cart for authenticated user updates cart\n- Test add to cart for unauthenticated user shows login prompt\n- Test adding item from different restaurant shows clear cart confirmation\n- Test responsive layout at breakpoints: 360px, 768px, 1440px\n- Test loading states display during API calls\n- Test error states display on API failure",
         "priority": "high",
         "dependencies": [
-          3,
-          4
+          "3",
+          "4"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Frontend: Cart and Checkout Flow",
         "description": "Build cart page with item management and checkout flow with address selection",
         "details": "COMPONENTS:\n- Create pages/Cart.jsx:\n  * Route: /cart (protected)\n  * Fetch GET /api/cart on mount\n  * Display restaurant name header\n  * List cart items in table/cards:\n    - Food item name, price, quantity selector, subtotal, remove button\n  * Quantity update: PUT /api/cart/items/:id with debounce\n  * Remove item: DELETE /api/cart/items/:id with confirmation\n  * Display cart total prominently\n  * \"Proceed to Checkout\" button\n  * Empty cart state: \"Your cart is empty\" with link to restaurants\n  * \"Clear Cart\" button with confirmation modal\n- Create pages/Checkout.jsx:\n  * Route: /checkout (protected, redirect if cart empty)\n  * Fetch GET /api/users/me/addresses\n  * Display order summary: items, quantities, prices, total\n  * Address selection:\n    - Radio buttons for saved addresses\n    - \"Add New Address\" button opening modal\n  * \"Place Order\" button calling POST /api/orders {addressId}\n  * Disable button during submission (loading state)\n  * On success: show confirmation, redirect to /orders/:orderId\n  * Handle errors: display error message\n- Create components/CartItem.jsx:\n  * Display item details\n  * Quantity selector with +/- buttons\n  * Update quantity on change\n  * Remove button with trash icon\n  * Loading state during update/remove\n- Create components/AddressSelector.jsx:\n  * List addresses as selectable cards\n  * Highlight selected address\n  * \"Add New\" button\n- Create components/AddAddressModal.jsx:\n  * Form: label, fullAddress (textarea), city, pincode\n  * Validation: all fields required, pincode 6 digits\n  * Submit: POST /api/users/me/addresses\n  * On success: close modal, refresh address list, auto-select new address\n- Create pages/OrderConfirmation.jsx:\n  * Route: /orders/:orderId\n  * Display success message, order ID, estimated delivery time (placeholder)\n  * Order summary with items\n  * \"View Order Details\" and \"Back to Home\" buttons\n\nSTATE MANAGEMENT:\n- Use CartContext to maintain cart state across app\n- Update cart count in navbar on cart changes\n- Optimistic updates for quantity changes (revert on error)\n\nVALIDATION:\n- Client-side: check address selected before placing order\n- Display validation errors clearly below inputs",
         "testStrategy": "- Test cart displays all items with correct prices and quantities\n- Test quantity update reflects immediately and calls API\n- Test remove item updates cart and total\n- Test clear cart empties all items after confirmation\n- Test empty cart shows appropriate message and CTA\n- Test checkout loads addresses correctly\n- Test selecting address enables place order button\n- Test add new address form validation\n- Test place order with no address selected shows error\n- Test successful order placement redirects to confirmation\n- Test order confirmation displays correct details\n- Test cart count badge updates across app\n- Test responsive layout on all screen sizes",
         "priority": "high",
         "dependencies": [
-          5,
-          6,
-          10
+          "5",
+          "6",
+          "10"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Frontend: Order History and User Profile",
         "description": "Build order history page, order details page, and user profile management",
         "details": "COMPONENTS:\n- Create pages/OrderHistory.jsx:\n  * Route: /orders (protected)\n  * Fetch GET /api/orders?page=0&size=10\n  * Display orders in reverse chronological order\n  * Each order card: order ID, restaurant name, total, status badge, date, \"View Details\" button\n  * Status badges with color coding: PLACED (blue), CONFIRMED (yellow), PREPARING (orange), OUT_FOR_DELIVERY (purple), DELIVERED (green), CANCELLED (red)\n  * Pagination controls\n  * Empty state: \"No orders yet\" with link to restaurants\n  * Filter by status (optional nice-to-have)\n- Create pages/OrderDetail.jsx:\n  * Route: /orders/:orderId (protected)\n  * Fetch GET /api/orders/:orderId\n  * Display order header: order ID, date, status with timeline/stepper\n  * Restaurant details\n  * Delivery address\n  * Order items table: item name, quantity, price, subtotal\n  * Total amount\n  * \"Reorder\" button (nice-to-have): adds all items to cart\n  * \"Back to Orders\" link\n- Create components/OrderCard.jsx: reusable order summary card\n- Create components/OrderStatusBadge.jsx: colored status indicator\n- Create components/OrderTimeline.jsx: visual status progression (optional)\n- Create pages/Profile.jsx:\n  * Route: /profile (protected)\n  * Fetch GET /api/users/me\n  * Display user info: name, email, phone, member since\n  * \"Edit Profile\" button toggling edit mode\n  * Edit form: name, phone (email read-only for simplicity)\n  * Submit: PUT /api/users/me\n  * Success message on update\n  * \"Change Password\" section:\n    - Form: old password, new password, confirm password\n    - Validation: passwords match, min 8 chars\n    - Submit: PUT /api/users/me/password\n  * \"My Addresses\" section:\n    - List saved addresses\n    - Edit/Delete buttons for each\n    - \"Add New Address\" button\n- Create components/AddressList.jsx:\n  * Display address cards with edit/delete actions\n  * Delete confirmation modal\n  * Edit address modal (reuse AddAddressModal)\n\nSTYLING:\n- Timeline/stepper for order status using Tailwind\n- Responsive tables/cards for order items\n- Form styling with proper spacing and validation states",
         "testStrategy": "- Test order history displays all user orders sorted by date\n- Test pagination works correctly\n- Test clicking order navigates to detail page\n- Test order detail shows all order information accurately\n- Test order status badge displays correct color for each status\n- Test reorder button adds items to cart (if implemented)\n- Test profile displays user information correctly\n- Test edit profile updates name and phone\n- Test change password with correct/incorrect old password\n- Test password validation (match, length)\n- Test address list displays all addresses\n- Test edit address updates correctly\n- Test delete address removes from list after confirmation\n- Test responsive layout on all devices",
         "priority": "high",
         "dependencies": [
-          7,
-          8,
-          11
+          "7",
+          "8",
+          "11"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Frontend: Authentication Pages and Protected Routes",
         "description": "Build login, registration pages, and implement route protection with JWT token management",
         "details": "COMPONENTS:\n- Create pages/Login.jsx:\n  * Form: email, password\n  * Client validation: email format, required fields\n  * Submit: call AuthContext.login(email, password)\n  * Show loading state during submission (disable button, spinner)\n  * Display error message on failed login\n  * On success: redirect to returnUrl or home\n  * \"Don't have an account? Register\" link\n  * \"Forgot Password?\" link (placeholder for future)\n- Create pages/Register.jsx:\n  * Form: name, email, phone, password, confirm password\n  * Client validation:\n    - All fields required\n    - Email format (regex)\n    - Phone format (10 digits)\n    - Password min 8 chars, match confirmation\n  * Submit: POST /api/auth/register\n  * Show field-level errors\n  * On success: show success message, redirect to login\n  * \"Already have an account? Login\" link\n- Update AuthContext:\n  * Initialize: check localStorage for token, validate with backend\n  * login(email, password):\n    - POST /api/auth/login\n    - Store token in localStorage\n    - Set axios default header: axios.defaults.headers.common['Authorization'] = `Bearer ${token}`\n    - Update context state: {user, token, isAuthenticated: true}\n  * logout():\n    - Clear localStorage\n    - Remove axios header\n    - Reset context state\n    - Redirect to login\n  * Axios interceptor for 401 responses: auto-logout\n- Create components/ProtectedRoute.jsx:\n  * Wrapper checking isAuthenticated from AuthContext\n  * If not authenticated: redirect to /login?returnUrl=currentPath\n  * If authenticated: render children\n- Create components/AdminRoute.jsx:\n  * Check isAuthenticated && user.role === 'ADMIN'\n  * If not admin: redirect to home with error toast\n- Update App.jsx routes:\n  * Public: /, /restaurants, /restaurants/:id, /login, /register\n  * Protected: /cart, /checkout, /orders, /orders/:id, /profile\n  * Admin: /admin/*\n\nNAVBAR:\n- Create components/Navbar.jsx:\n  * Logo/brand linking to home\n  * Links: Home, Restaurants\n  * If authenticated:\n    - Cart icon with badge showing item count\n    - User dropdown: Profile, Orders, Logout\n    - Admin link if role === 'ADMIN'\n  * If not authenticated: Login, Register buttons\n  * Mobile responsive: hamburger menu\n\nSTYLING:\n- Form inputs with Tailwind: focus states, error states (red border)\n- Error messages in red text below inputs\n- Loading spinners on buttons\n- Navbar sticky/fixed with shadow",
         "testStrategy": "- Test registration with valid data creates account\n- Test registration validation: email format, password match, required fields\n- Test registration with duplicate email shows error\n- Test login with valid credentials authenticates and redirects\n- Test login with invalid credentials shows error\n- Test token stored in localStorage after login\n- Test axios header set with token after login\n- Test logout clears token and redirects to login\n- Test protected routes redirect to login when not authenticated\n- Test returnUrl works after login redirect\n- Test admin routes reject non-admin users\n- Test navbar shows correct links based on auth state\n- Test cart badge updates with cart changes\n- Test 401 response triggers auto-logout\n- Test token persistence across page refresh",
         "priority": "high",
         "dependencies": [
-          2
+          "2"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Frontend: Admin Panel - Restaurant and Food Management",
         "description": "Build admin dashboard with CRUD interfaces for managing restaurants and food items",
         "details": "COMPONENTS:\n- Create pages/admin/AdminDashboard.jsx:\n  * Route: /admin (protected, admin only)\n  * Dashboard cards: Total Restaurants, Total Food Items, Total Orders, Today's Orders\n  * Fetch GET /api/admin/dashboard/stats\n  * Quick action buttons: Manage Restaurants, Manage Food Items, View Orders\n- Create pages/admin/RestaurantManagement.jsx:\n  * Route: /admin/restaurants\n  * Table/grid displaying all restaurants\n  * Columns: ID, Name, Cuisine, Rating, Address, Actions (Edit, Delete)\n  * \"Add New Restaurant\" button opening modal/form\n  * Search and filter functionality\n  * Pagination\n- Create components/admin/RestaurantForm.jsx:\n  * Form: name, description, address, cuisineType (dropdown), rating (number input 0-5), imageUrl\n  * Validation: all required except description, rating range, URL format\n  * Create mode: POST /api/admin/restaurants\n  * Edit mode: PUT /api/admin/restaurants/:id\n  * Can be modal or separate page\n- Create pages/admin/FoodItemManagement.jsx:\n  * Route: /admin/food-items\n  * Table displaying all food items\n  * Columns: ID, Name, Restaurant, Category, Price, Available, Actions\n  * Filter by restaurant dropdown\n  * \"Add New Food Item\" button\n  * Toggle availability switch calling PATCH /api/admin/food-items/:id/availability\n- Create components/admin/FoodItemForm.jsx:\n  * Form: restaurant (dropdown), category (dropdown), name, description, price, imageUrl, isAvailable (checkbox)\n  * Fetch GET /api/restaurants and /api/categories for dropdowns\n  * Validation: all required except description, price > 0\n  * Create: POST /api/admin/food-items\n  * Edit: PUT /api/admin/food-items/:id\n- Create components/admin/DeleteConfirmationModal.jsx:\n  * Generic confirmation modal for delete actions\n  * Show warning message\n  * Confirm/Cancel buttons\n\nLAYOUT:\n- Create components/admin/AdminLayout.jsx:\n  * Sidebar navigation: Dashboard, Restaurants, Food Items, Orders\n  * Header with admin user info and logout\n  * Responsive: sidebar collapses to hamburger on mobile\n\nSTYLING:\n- Tables with Tailwind: striped rows, hover effects\n- Forms with proper spacing and validation states\n- Action buttons with icons (edit: pencil, delete: trash)\n- Success/error toast notifications on CRUD operations",
         "testStrategy": "- Test admin dashboard displays correct statistics\n- Test non-admin users cannot access admin routes (403/redirect)\n- Test restaurant list displays all restaurants\n- Test add new restaurant form with valid/invalid data\n- Test edit restaurant updates correctly\n- Test delete restaurant with confirmation\n- Test food item list with restaurant filter\n- Test add new food item with valid/invalid data\n- Test edit food item updates correctly\n- Test toggle food item availability\n- Test delete food item with confirmation\n- Test form validation displays errors correctly\n- Test success/error messages after CRUD operations\n- Test responsive layout on mobile/tablet/desktop\n- Test sidebar navigation works correctly",
         "priority": "medium",
         "dependencies": [
-          3,
-          4,
-          13
+          "3",
+          "4",
+          "13"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Frontend: Admin Panel - Order Management",
         "description": "Build admin interface for viewing all orders and updating order status",
         "details": "COMPONENTS:\n- Create pages/admin/OrderManagement.jsx:\n  * Route: /admin/orders\n  * Table displaying all orders from all users\n  * Columns: Order ID, User Name, Restaurant, Total, Status, Date, Actions (View, Update Status)\n  * Filter by status dropdown (All, PLACED, CONFIRMED, etc.)\n  * Search by order ID or user name\n  * Pagination\n  * Fetch GET /api/admin/orders?page=&size=&status=\n- Create components/admin/OrderDetailModal.jsx:\n  * Display full order details:\n    - Order ID, date, status\n    - User: name, email, phone\n    - Delivery address\n    - Restaurant name\n    - Order items table: name, quantity, price, subtotal\n    - Total amount\n  * \"Update Status\" dropdown with save button\n  * Fetch GET /api/admin/orders/:id\n- Create components/admin/UpdateOrderStatusModal.jsx:\n  * Dropdown with status options: PLACED, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED\n  * Validate logical status transitions\n  * Submit: PUT /api/admin/orders/:id/status {status}\n  * Show success message and refresh order list\n- Create components/admin/OrderFilters.jsx:\n  * Status filter dropdown\n  * Date range picker (optional)\n  * Search input for order ID/user\n\nFEATURES:\n- Real-time-like updates: auto-refresh order list every 30 seconds (optional)\n- Export orders to CSV (optional nice-to-have)\n- Bulk status update (optional)\n\nSTYLING:\n- Status badges with consistent coloring\n- Responsive table: horizontal scroll on mobile\n- Action buttons grouped\n- Modal overlays with proper z-index",
         "testStrategy": "- Test order list displays all orders from all users\n- Test filter by status shows only matching orders\n- Test search by order ID or user name\n- Test pagination works correctly\n- Test clicking view opens order detail modal\n- Test order detail shows complete information\n- Test update status dropdown shows valid transitions\n- Test updating status succeeds and refreshes list\n- Test invalid status transition is rejected\n- Test only admin can access order management (route protection)\n- Test responsive layout on all devices\n- Test auto-refresh updates order list (if implemented)",
         "priority": "medium",
         "dependencies": [
-          9,
-          14
+          "9",
+          "14"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 16,
+        "id": "16",
         "title": "Error Handling, Validation, and Polish",
         "description": "Implement comprehensive error handling, input validation, loading states, and UX polish across the entire application",
         "details": "BACKEND:\n- Enhance GlobalExceptionHandler (@ControllerAdvice):\n  * Handle MethodArgumentNotValidException: return 400 with field errors\n  * Handle EntityNotFoundException: return 404 with message\n  * Handle AccessDeniedException: return 403\n  * Handle DataIntegrityViolationException: return 409 for duplicates\n  * Handle generic Exception: return 500 with safe message (log full stack trace)\n  * Response format: {timestamp, status, error, message, path, fieldErrors[]}\n- Add @Valid and validation annotations to all DTOs:\n  * @NotBlank, @NotNull, @Email, @Size, @Min, @Max, @Pattern\n  * Custom validators: @ValidPhoneNumber, @ValidPassword\n- Implement request/response logging filter for debugging\n- Add CORS configuration for frontend domain\n- Configure rate limiting for auth endpoints (prevent brute force)\n\nFRONTEND:\n- Create components/LoadingSpinner.jsx: reusable spinner component\n- Create components/ErrorMessage.jsx: reusable error display\n- Create components/Toast.jsx: toast notification system for success/error messages\n- Implement global error boundary (ErrorBoundary component) catching React errors\n- Add loading states to all async operations:\n  * Skeleton loaders for lists/cards\n  * Button disabled with spinner during submission\n  * Full-page loader for navigation\n- Add empty states:\n  * Empty cart: illustration + \"Start browsing\" CTA\n  * No orders: \"Order your first meal\" CTA\n  * No search results: \"Try different keywords\"\n  * No restaurants: \"Coming soon to your area\"\n- Enhance form validation:\n  * Show field errors below inputs\n  * Disable submit until form valid\n  * Clear errors on input change\n- Add confirmation dialogs for destructive actions:\n  * Delete address, clear cart, cancel order\n- Implement optimistic updates where appropriate:\n  * Cart quantity changes\n  * Toggle favorite (if implemented)\n- Add success feedback:\n  * Toast on successful actions\n  * Checkmark animations\n- Accessibility:\n  * Proper ARIA labels\n  * Keyboard navigation support\n  * Focus management in modals\n  * Alt text for images\n- Performance:\n  * Lazy load routes with React.lazy() and Suspense\n  * Debounce search inputs\n  * Memoize expensive computations\n  * Image optimization (use loading=\"lazy\")\n\nTESTING:\n- Write unit tests for critical services (AuthService, CartService, OrderService)\n- Integration tests for main API flows\n- Frontend: test auth flow, cart flow, checkout flow with React Testing Library",
         "testStrategy": "- Test all validation errors return proper 400 responses with field details\n- Test 404 errors for non-existent resources\n- Test 403 errors for unauthorized access\n- Test 500 errors return safe message (no stack trace leak)\n- Test CORS allows frontend domain requests\n- Test rate limiting blocks excessive login attempts\n- Test loading spinners appear during API calls\n- Test error messages display on API failures\n- Test form validation shows field errors correctly\n- Test empty states render appropriately\n- Test confirmation dialogs prevent accidental deletions\n- Test success toasts appear after successful actions\n- Test keyboard navigation works throughout app\n- Test screen reader compatibility (basic ARIA)\n- Test lazy loading routes don't break navigation\n- Test app handles network errors gracefully\n- Test optimistic updates revert on API failure",
         "priority": "high",
         "dependencies": [
-          10,
-          11,
-          12,
-          13,
-          14,
-          15
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 17,
+        "id": "17",
         "title": "Database Seeding, Documentation, and Deployment",
         "description": "Create database seed scripts, comprehensive documentation, and deploy application to Vercel, Render, and Railway",
         "details": "DATABASE SEEDING:\n- Create data.sql or use Spring Boot CommandLineRunner:\n  * Seed categories: North Indian, South Indian, Chinese, Italian, Mexican, Desserts, Beverages\n  * Seed 15-20 restaurants with realistic data across categories\n  * Seed 5-10 food items per restaurant with varied prices\n  * Create 1 admin user (email: admin@foodrush.com, password: Admin@123)\n  * Create 2-3 test users\n  * Seed sample addresses for test users\n  * Optionally seed sample orders for testing order history\n- Ensure seed script is idempotent (check existence before insert)\n\nDOCUMENTATION:\n- Create comprehensive README.md:\n  * Project overview and features\n  * Tech stack with versions\n  * Architecture diagram (optional)\n  * Prerequisites (Node.js 18+, Java 17+, MySQL 8+)\n  * Environment variables required:\n    - Backend: DATABASE_URL, JWT_SECRET, JWT_EXPIRATION\n    - Frontend: VITE_API_BASE_URL\n  * Local setup instructions:\n    - Clone repo\n    - Database setup and seeding\n    - Backend setup (./mvnw spring-boot:run)\n    - Frontend setup (npm install && npm run dev)\n  * API documentation (link to Postman collection or Swagger)\n  * Demo credentials (admin and user)\n  * Deployment instructions\n  * Screenshots of main features\n  * Known limitations and future enhancements\n  * License\n- Create API_DOCUMENTATION.md:\n  * Document all endpoints with request/response examples\n  * Authentication flow\n  * Error response formats\n- Create .env.example files for both frontend and backend\n- Add inline code comments for complex logic\n\nDEPLOYMENT:\n- Backend (Render):\n  * Create Render Web Service\n  * Connect GitHub repo\n  * Build command: ./mvnw clean package -DskipTests\n  * Start command: java -jar target/foodrush-0.0.1-SNAPSHOT.jar\n  * Set environment variables: DATABASE_URL, JWT_SECRET\n  * Configure health check endpoint: /actuator/health\n- Database (Railway):\n  * Create MySQL instance on Railway\n  * Note connection string (DATABASE_URL)\n  * Run seed scripts via Railway CLI or initial migration\n- Frontend (Vercel):\n  * Connect GitHub repo to Vercel\n  * Set build command: npm run build\n  * Set output directory: dist\n  * Set environment variable: VITE_API_BASE_URL (Render backend URL)\n  * Configure redirects for SPA routing (vercel.json)\n- Post-deployment:\n  * Test complete user flow on production\n  * Verify CORS configuration allows Vercel domain\n  * Test admin functionality\n  * Check mobile responsiveness on real devices\n  * Monitor logs for errors\n\nCONFIGURATION FILES:\n- Create vercel.json:\n  ```json\n  {\n    \"rewrites\": [{\"source\": \"/(.*)\", \"destination\": \"/index.html\"}]\n  }\n  ```\n- Update application.yml with production profile\n- Create .gitignore excluding .env, target/, node_modules/, build/\n\nFINAL TESTING:\n- End-to-end testing on deployed environment\n- Performance testing (page load times, API response times)\n- Security audit (OWASP top 10 checks)\n- Mobile responsiveness check on multiple devices\n- Cross-browser testing (Chrome, Firefox, Safari, Edge)",
         "testStrategy": "- Test seed script populates database without errors\n- Test seed script is idempotent (can run multiple times)\n- Verify all demo data is realistic and complete\n- Test backend deploys successfully on Render\n- Test database connection from Render to Railway\n- Test frontend deploys successfully on Vercel\n- Test CORS allows requests from Vercel domain\n- Test complete user flow on production environment\n- Test admin login and operations on production\n- Test SPA routing works correctly (no 404s on refresh)\n- Test environment variables are properly configured\n- Test health check endpoint returns 200\n- Review README for completeness and accuracy\n- Test setup instructions by following them on fresh environment\n- Verify API documentation matches actual endpoints\n- Check no sensitive data exposed in logs or errors",
         "priority": "high",
         "dependencies": [
-          16
+          "16"
         ],
         "status": "pending",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2026-07-29T17:51:25.683Z",
-      "updated": "2026-07-29T17:51:25.683Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-07-30T19:32:48.260Z",
+      "taskCount": 17,
+      "completedCount": 1,
+      "tags": [
+        "master"
+      ]
     }
   }
 }
