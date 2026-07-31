@@ -1,8 +1,12 @@
 package com.foodrush.backend.service;
 
 import com.foodrush.backend.dto.FoodItemDTO;
+import com.foodrush.backend.dto.FoodItemRequest;
 import com.foodrush.backend.dto.MenuResponse;
+import com.foodrush.backend.entity.Category;
 import com.foodrush.backend.entity.FoodItem;
+import com.foodrush.backend.entity.Restaurant;
+import com.foodrush.backend.exception.CategoryNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
 import com.foodrush.backend.repository.CategoryRepository;
@@ -65,8 +69,69 @@ public class FoodItemService {
         return FoodItemDTO.from(requireFoodItem(id));
     }
 
+    @Transactional
+    public FoodItemDTO createFoodItem(FoodItemRequest request) {
+        Restaurant restaurant = requireRestaurant(request.restaurantId());
+        Category category = requireCategory(request.categoryId());
+        FoodItem foodItem = FoodItem.builder()
+                .restaurant(restaurant)
+                .category(category)
+                .name(request.name())
+                .description(request.description())
+                .price(request.price())
+                .imageUrl(request.imageUrl())
+                .isAvailable(true)
+                .build();
+        return FoodItemDTO.from(foodItemRepository.save(foodItem));
+    }
+
+    @Transactional
+    public FoodItemDTO updateFoodItem(Long id, FoodItemRequest request) {
+        FoodItem foodItem = requireFoodItem(id);
+        foodItem.setRestaurant(requireRestaurant(request.restaurantId()));
+        foodItem.setCategory(requireCategory(request.categoryId()));
+        foodItem.setName(request.name());
+        foodItem.setDescription(request.description());
+        foodItem.setPrice(request.price());
+        foodItem.setImageUrl(request.imageUrl());
+        // isAvailable is deliberately untouched - it is owned by toggleAvailability/deleteFoodItem.
+        return FoodItemDTO.from(foodItemRepository.save(foodItem));
+    }
+
+    /**
+     * Soft-deletes (marks unavailable) any item that already appears in order history, so past
+     * orders keep referring to a real row. Items with no order history are removed outright.
+     */
+    @Transactional
+    public void deleteFoodItem(Long id) {
+        FoodItem foodItem = requireFoodItem(id);
+        if (orderItemRepository.existsByFoodItemId(id)) {
+            foodItem.setAvailable(false);
+            foodItemRepository.save(foodItem);
+            return;
+        }
+        foodItemRepository.delete(foodItem);
+    }
+
+    @Transactional
+    public FoodItemDTO toggleAvailability(Long id) {
+        FoodItem foodItem = requireFoodItem(id);
+        foodItem.setAvailable(!foodItem.isAvailable());
+        return FoodItemDTO.from(foodItemRepository.save(foodItem));
+    }
+
     private FoodItem requireFoodItem(Long id) {
         return foodItemRepository.findById(id)
                 .orElseThrow(() -> new FoodItemNotFoundException("Food item not found: " + id));
+    }
+
+    private Restaurant requireRestaurant(Long id) {
+        return restaurantRepository.findById(id)
+                .orElseThrow(() -> new RestaurantNotFoundException("Restaurant not found: " + id));
+    }
+
+    private Category requireCategory(Long id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new CategoryNotFoundException("Category not found: " + id));
     }
 }
