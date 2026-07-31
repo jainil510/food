@@ -143,6 +143,33 @@ class GlobalExceptionHandlerTest {
                 .doesNotContain("sensitive internal detail that must not leak");
     }
 
+    @Test
+    void handleCartItemNotFound_returns404WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/cart/items/42");
+        CartItemNotFoundException ex = new CartItemNotFoundException("Cart item not found: 42");
+
+        ResponseEntity<ErrorResponse> response = handler.handleCartItemNotFound(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Cart item not found: 42");
+        assertThat(response.getBody().path()).isEqualTo("/api/cart/items/42");
+    }
+
+    @Test
+    void handleCartConflict_returns409WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/cart/items");
+        CartConflictException ex = new CartConflictException(
+                "Cart can only contain items from one restaurant. Clear cart first?");
+
+        ResponseEntity<ErrorResponse> response = handler.handleCartConflict(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message())
+                .isEqualTo("Cart can only contain items from one restaurant. Clear cart first?");
+    }
+
     private MethodParameter dummyMethodParameter() throws NoSuchMethodException {
         Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("dummyTarget", String.class);
         return new MethodParameter(method, 0);
