@@ -65,6 +65,18 @@ class GlobalExceptionHandlerTest {
                 .doesNotContain("nobody@foodrush.com");
     }
 
+    @Test
+    void handleRestaurantNotFound_returns404WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/restaurants/99");
+        RestaurantNotFoundException ex = new RestaurantNotFoundException("Restaurant not found: 99");
+
+        ResponseEntity<ErrorResponse> response = handler.handleRestaurantNotFound(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Restaurant not found: 99");
+    }
+
     private MethodParameter dummyMethodParameter() throws NoSuchMethodException {
         Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("dummyTarget", String.class);
         return new MethodParameter(method, 0);
