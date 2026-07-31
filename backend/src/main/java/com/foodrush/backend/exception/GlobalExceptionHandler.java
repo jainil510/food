@@ -35,6 +35,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(RestaurantHasActiveOrdersException.class)
+    public ResponseEntity<ErrorResponse> handleRestaurantHasActiveOrders(RestaurantHasActiveOrdersException ex,
+                                                                          HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex,
                                                                HttpServletRequest request) {

@@ -2,7 +2,10 @@ package com.foodrush.backend.service;
 
 import com.foodrush.backend.dto.PagedResponse;
 import com.foodrush.backend.dto.RestaurantDTO;
+import com.foodrush.backend.dto.RestaurantRequest;
+import com.foodrush.backend.entity.OrderStatus;
 import com.foodrush.backend.entity.Restaurant;
+import com.foodrush.backend.exception.RestaurantHasActiveOrdersException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderRepository;
@@ -11,8 +14,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class RestaurantService {
+
+    private static final List<OrderStatus> TERMINAL_ORDER_STATUSES = List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED);
 
     private final RestaurantRepository restaurantRepository;
     private final FoodItemRepository foodItemRepository;
@@ -45,5 +52,39 @@ public class RestaurantService {
     public PagedResponse<RestaurantDTO> filterByCuisine(String cuisineType, int page, int size) {
         Page<Restaurant> result = restaurantRepository.findByCuisineType(cuisineType, PageRequest.of(page, size));
         return PagedResponse.from(result.map(RestaurantDTO::from));
+    }
+
+    public RestaurantDTO createRestaurant(RestaurantRequest request) {
+        Restaurant restaurant = Restaurant.builder()
+                .name(request.name())
+                .description(request.description())
+                .address(request.address())
+                .cuisineType(request.cuisineType())
+                .rating(request.rating())
+                .imageUrl(request.imageUrl())
+                .build();
+        return RestaurantDTO.from(restaurantRepository.save(restaurant));
+    }
+
+    public RestaurantDTO updateRestaurant(Long id, RestaurantRequest request) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new RestaurantNotFoundException("Restaurant not found: " + id));
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setCuisineType(request.cuisineType());
+        restaurant.setRating(request.rating());
+        restaurant.setImageUrl(request.imageUrl());
+        return RestaurantDTO.from(restaurantRepository.save(restaurant));
+    }
+
+    public void deleteRestaurant(Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new RestaurantNotFoundException("Restaurant not found: " + id));
+        if (orderRepository.existsByRestaurantIdAndStatusNotIn(id, TERMINAL_ORDER_STATUSES)) {
+            throw new RestaurantHasActiveOrdersException("Cannot delete restaurant with active orders: " + id);
+        }
+        foodItemRepository.deleteByRestaurantId(id);
+        restaurantRepository.delete(restaurant);
     }
 }

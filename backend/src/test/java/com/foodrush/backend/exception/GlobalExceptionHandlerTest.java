@@ -77,6 +77,19 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().message()).isEqualTo("Restaurant not found: 99");
     }
 
+    @Test
+    void handleRestaurantHasActiveOrders_returns409WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/admin/restaurants/1");
+        RestaurantHasActiveOrdersException ex =
+                new RestaurantHasActiveOrdersException("Cannot delete restaurant with active orders: 1");
+
+        ResponseEntity<ErrorResponse> response = handler.handleRestaurantHasActiveOrders(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Cannot delete restaurant with active orders: 1");
+    }
+
     private MethodParameter dummyMethodParameter() throws NoSuchMethodException {
         Method method = GlobalExceptionHandlerTest.class.getDeclaredMethod("dummyTarget", String.class);
         return new MethodParameter(method, 0);

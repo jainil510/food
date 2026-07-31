@@ -2,7 +2,9 @@ package com.foodrush.backend.service;
 
 import com.foodrush.backend.dto.PagedResponse;
 import com.foodrush.backend.dto.RestaurantDTO;
+import com.foodrush.backend.dto.RestaurantRequest;
 import com.foodrush.backend.entity.Restaurant;
+import com.foodrush.backend.exception.RestaurantHasActiveOrdersException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderRepository;
@@ -10,6 +12,7 @@ import com.foodrush.backend.repository.RestaurantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -24,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,5 +114,85 @@ class RestaurantServiceTest {
 
         assertThat(result.content()).hasSize(1);
         assertThat(result.content().get(0).cuisineType()).isEqualTo("North Indian");
+    }
+
+    @Test
+    void createRestaurant_savesAndReturnsRestaurant() {
+        RestaurantRequest request = new RestaurantRequest(
+                "Spice Route", "Authentic North Indian", "12 MG Road", "North Indian",
+                new BigDecimal("4.5"), "https://example.com/spice-route.jpg");
+        when(restaurantRepository.save(any(Restaurant.class))).thenAnswer(invocation -> {
+            Restaurant saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        RestaurantDTO result = restaurantService.createRestaurant(request);
+
+        ArgumentCaptor<Restaurant> captor = ArgumentCaptor.forClass(Restaurant.class);
+        verify(restaurantRepository).save(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("Spice Route");
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Spice Route");
+    }
+
+    @Test
+    void updateRestaurant_updatesFieldsAndSaves_whenFound() {
+        Restaurant existing = sampleRestaurant();
+        RestaurantRequest request = new RestaurantRequest(
+                "Spice Route Updated", "New description", "13 MG Road", "South Indian",
+                new BigDecimal("4.8"), "https://example.com/updated.jpg");
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(restaurantRepository.save(any(Restaurant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RestaurantDTO result = restaurantService.updateRestaurant(1L, request);
+
+        assertThat(result.name()).isEqualTo("Spice Route Updated");
+        assertThat(result.cuisineType()).isEqualTo("South Indian");
+        assertThat(result.rating()).isEqualByComparingTo("4.8");
+    }
+
+    @Test
+    void updateRestaurant_throwsRestaurantNotFoundException_whenMissing() {
+        RestaurantRequest request = new RestaurantRequest("X", null, "Y", null, null, null);
+        when(restaurantRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> restaurantService.updateRestaurant(99L, request))
+                .isInstanceOf(RestaurantNotFoundException.class);
+
+        verify(restaurantRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteRestaurant_deletesFoodItemsThenRestaurant_whenNoActiveOrders() {
+        Restaurant existing = sampleRestaurant();
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(orderRepository.existsByRestaurantIdAndStatusNotIn(eq(1L), any())).thenReturn(false);
+
+        restaurantService.deleteRestaurant(1L);
+
+        verify(foodItemRepository).deleteByRestaurantId(1L);
+        verify(restaurantRepository).delete(existing);
+    }
+
+    @Test
+    void deleteRestaurant_throwsRestaurantHasActiveOrdersException_whenActiveOrdersExist() {
+        Restaurant existing = sampleRestaurant();
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(orderRepository.existsByRestaurantIdAndStatusNotIn(eq(1L), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> restaurantService.deleteRestaurant(1L))
+                .isInstanceOf(RestaurantHasActiveOrdersException.class);
+
+        verify(foodItemRepository, never()).deleteByRestaurantId(any());
+        verify(restaurantRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteRestaurant_throwsRestaurantNotFoundException_whenMissing() {
+        when(restaurantRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> restaurantService.deleteRestaurant(99L))
+                .isInstanceOf(RestaurantNotFoundException.class);
     }
 }
