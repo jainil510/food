@@ -92,6 +92,30 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleFoodItemNotFound_returns404WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/food-items/99");
+        FoodItemNotFoundException ex = new FoodItemNotFoundException("Food item not found: 99");
+
+        ResponseEntity<ErrorResponse> response = handler.handleFoodItemNotFound(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Food item not found: 99");
+    }
+
+    @Test
+    void handleCategoryNotFound_returns404WithMessage() {
+        when(request.getRequestURI()).thenReturn("/api/admin/food-items");
+        CategoryNotFoundException ex = new CategoryNotFoundException("Category not found: 77");
+
+        ResponseEntity<ErrorResponse> response = handler.handleCategoryNotFound(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message()).isEqualTo("Category not found: 77");
+    }
+
+    @Test
     void handleDataIntegrityViolation_returns409WithGenericMessage() {
         when(request.getRequestURI()).thenReturn("/api/admin/restaurants/1");
         DataIntegrityViolationException ex = new DataIntegrityViolationException("some low-level DB constraint detail");
