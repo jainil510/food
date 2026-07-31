@@ -12,6 +12,7 @@ import com.foodrush.backend.repository.OrderRepository;
 import com.foodrush.backend.repository.RestaurantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,7 @@ public class RestaurantService {
     }
 
     public PagedResponse<RestaurantDTO> getAllRestaurants(int page, int size) {
-        Page<Restaurant> result = restaurantRepository.findAll(PageRequest.of(page, size));
+        Page<Restaurant> result = restaurantRepository.findAll(PageRequest.of(page, size, Sort.by("id")));
         return PagedResponse.from(result.map(RestaurantDTO::from));
     }
 
@@ -46,12 +47,12 @@ public class RestaurantService {
     }
 
     public PagedResponse<RestaurantDTO> searchRestaurants(String query, int page, int size) {
-        Page<Restaurant> result = restaurantRepository.findByNameContainingIgnoreCase(query, PageRequest.of(page, size));
+        Page<Restaurant> result = restaurantRepository.findByNameContainingIgnoreCase(query, PageRequest.of(page, size, Sort.by("id")));
         return PagedResponse.from(result.map(RestaurantDTO::from));
     }
 
     public PagedResponse<RestaurantDTO> filterByCuisine(String cuisineType, int page, int size) {
-        Page<Restaurant> result = restaurantRepository.findByCuisineType(cuisineType, PageRequest.of(page, size));
+        Page<Restaurant> result = restaurantRepository.findByCuisineType(cuisineType, PageRequest.of(page, size, Sort.by("id")));
         return PagedResponse.from(result.map(RestaurantDTO::from));
     }
 
