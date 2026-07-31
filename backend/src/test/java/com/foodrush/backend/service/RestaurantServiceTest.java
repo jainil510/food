@@ -150,6 +150,9 @@ class RestaurantServiceTest {
         assertThat(result.name()).isEqualTo("Spice Route Updated");
         assertThat(result.cuisineType()).isEqualTo("South Indian");
         assertThat(result.rating()).isEqualByComparingTo("4.8");
+        assertThat(result.address()).isEqualTo("13 MG Road");
+        assertThat(result.description()).isEqualTo("New description");
+        assertThat(result.imageUrl()).isEqualTo("https://example.com/updated.jpg");
     }
 
     @Test
