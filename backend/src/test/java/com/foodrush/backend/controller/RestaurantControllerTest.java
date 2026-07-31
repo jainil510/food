@@ -84,4 +84,16 @@ class RestaurantControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].name").value("Spice Route"));
     }
+
+    @Test
+    void getRestaurants_returns400_whenSizeExceedsMax() throws Exception {
+        mockMvc.perform(get("/api/restaurants").param("size", "1000000"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getRestaurants_returns400_whenPageNegative() throws Exception {
+        mockMvc.perform(get("/api/restaurants").param("page", "-1"))
+                .andExpect(status().isBadRequest());
+    }
 }

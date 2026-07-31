@@ -3,6 +3,7 @@ package com.foodrush.backend.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -88,6 +89,34 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().message()).isEqualTo("Cannot delete restaurant with active orders: 1");
+    }
+
+    @Test
+    void handleDataIntegrityViolation_returns409WithGenericMessage() {
+        when(request.getRequestURI()).thenReturn("/api/admin/restaurants/1");
+        DataIntegrityViolationException ex = new DataIntegrityViolationException("some low-level DB constraint detail");
+
+        ResponseEntity<ErrorResponse> response = handler.handleDataIntegrityViolation(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message())
+                .isEqualTo("Cannot complete this operation because related records still exist")
+                .doesNotContain("some low-level DB constraint detail");
+    }
+
+    @Test
+    void handleUnexpected_returns500WithGenericMessage_neverLeakingCauseDetail() {
+        when(request.getRequestURI()).thenReturn("/api/restaurants");
+        Exception ex = new RuntimeException("sensitive internal detail that must not leak");
+
+        ResponseEntity<ErrorResponse> response = handler.handleUnexpected(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().message())
+                .isEqualTo("An unexpected error occurred")
+                .doesNotContain("sensitive internal detail that must not leak");
     }
 
     private MethodParameter dummyMethodParameter() throws NoSuchMethodException {
