@@ -13,6 +13,7 @@ import com.foodrush.backend.repository.RestaurantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -78,6 +79,7 @@ public class RestaurantService {
         return RestaurantDTO.from(restaurantRepository.save(restaurant));
     }
 
+    @Transactional
     public void deleteRestaurant(Long id) {
         Restaurant restaurant = restaurantRepository.findById(id)
                 .orElseThrow(() -> new RestaurantNotFoundException("Restaurant not found: " + id));
