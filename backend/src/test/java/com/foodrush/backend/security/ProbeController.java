@@ -27,8 +27,8 @@ class ProbeController {
         return "ok";
     }
 
-    @GetMapping("/api/restaurants/{id}/menu")
-    String restaurantMenuProbe() {
+    @GetMapping("/api/food-items/probe")
+    String foodItemsProbe() {
         return "ok";
     }
 

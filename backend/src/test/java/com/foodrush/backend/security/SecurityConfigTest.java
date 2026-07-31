@@ -43,7 +43,11 @@ class SecurityConfigTest {
     @Test
     void restaurantBrowsing_isPublic() throws Exception {
         mockMvc.perform(get("/api/restaurants/probe")).andExpect(status().isOk());
-        mockMvc.perform(get("/api/restaurants/1/menu")).andExpect(status().isOk());
+    }
+
+    @Test
+    void foodItemsEndpoint_isPublic() throws Exception {
+        mockMvc.perform(get("/api/food-items/probe")).andExpect(status().isOk());
     }
 
     @Test

@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/restaurants/**", "/api/categories/**").permitAll()
+                        .requestMatchers("/api/restaurants/**", "/api/categories/**", "/api/food-items/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/cart/**", "/api/orders/**", "/api/users/**").authenticated()
                         .anyRequest().authenticated())
