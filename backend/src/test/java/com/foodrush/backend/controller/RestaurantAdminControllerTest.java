@@ -103,6 +103,17 @@ class RestaurantAdminControllerTest {
     }
 
     @Test
+    void createRestaurant_returns400_whenNameExceedsMaxLength() throws Exception {
+        String tooLongName = "A".repeat(151);
+        RestaurantRequest request = new RestaurantRequest(tooLongName, null, "12 MG Road", null, null, null);
+
+        mockMvc.perform(post("/api/admin/restaurants")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void deleteRestaurant_returns409_whenActiveOrdersExist() throws Exception {
         org.mockito.Mockito.doThrow(new RestaurantHasActiveOrdersException("Cannot delete restaurant with active orders: 1"))
                 .when(restaurantService).deleteRestaurant(1L);
