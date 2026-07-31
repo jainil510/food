@@ -22,6 +22,11 @@ class ProbeController {
         return "ok";
     }
 
+    @GetMapping("/api/categories/probe")
+    String categoriesProbe() {
+        return "ok";
+    }
+
     @GetMapping("/api/restaurants/{id}/menu")
     String restaurantMenuProbe() {
         return "ok";

@@ -47,6 +47,11 @@ class SecurityConfigTest {
     }
 
     @Test
+    void categoriesEndpoint_isPublic() throws Exception {
+        mockMvc.perform(get("/api/categories/probe")).andExpect(status().isOk());
+    }
+
+    @Test
     void cartEndpoint_rejectsUnauthenticatedRequest_with401() throws Exception {
         mockMvc.perform(get("/api/cart/probe")).andExpect(status().isUnauthorized());
     }
