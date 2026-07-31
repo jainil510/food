@@ -9,6 +9,7 @@ import com.foodrush.backend.entity.Restaurant;
 import com.foodrush.backend.entity.Role;
 import com.foodrush.backend.entity.User;
 import com.foodrush.backend.exception.CartConflictException;
+import com.foodrush.backend.exception.CartItemNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.repository.CartRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
@@ -281,5 +282,165 @@ class CartServiceTest {
         ArgumentCaptor<Cart> captor = ArgumentCaptor.forClass(Cart.class);
         verify(cartRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
         assertThat(captor.getAllValues().get(0).getUser()).isEqualTo(asha);
+    }
+
+    @Test
+    void updateCartItem_changesQuantity() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.updateCartItem(USER_ID, 1L, 5);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).quantity()).isEqualTo(5);
+        assertThat(result.total()).isEqualByComparingTo("300.00");
+    }
+
+    @Test
+    void updateCartItem_removesLine_whenQuantityIsZero() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        cartItem(2L, foodItem(11L, "Paneer Tikka", "240.00", spiceRoute, true), 1, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.updateCartItem(USER_ID, 1L, 0);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).cartItemId()).isEqualTo(2L);
+        assertThat(result.total()).isEqualByComparingTo("240.00");
+    }
+
+    @Test
+    void updateCartItem_resetsRestaurant_whenZeroRemovesTheLastLine() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.updateCartItem(USER_ID, 1L, 0);
+
+        // Otherwise the user stays locked to Spice Route with an empty cart.
+        assertThat(result.restaurantId()).isNull();
+        assertThat(cart.getRestaurant()).isNull();
+    }
+
+    @Test
+    void updateCartItem_throwsCartItemNotFound_whenLineBelongsToAnotherUser() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+
+        // 42 exists in the database but sits in somebody else's cart. Scanning only this
+        // user's own lines makes it indistinguishable from a nonexistent id - no leak.
+        assertThatThrownBy(() -> cartService.updateCartItem(USER_ID, 42L, 3))
+                .isInstanceOf(CartItemNotFoundException.class)
+                .hasMessage("Cart item not found: 42");
+    }
+
+    @Test
+    void updateCartItem_throwsCartItemNotFound_whenUserHasNoCart() {
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cartService.updateCartItem(USER_ID, 1L, 3))
+                .isInstanceOf(CartItemNotFoundException.class)
+                .hasMessage("Cart item not found: 1");
+    }
+
+    @Test
+    void removeCartItem_deletesTheLine() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        cartItem(2L, foodItem(11L, "Paneer Tikka", "240.00", spiceRoute, true), 1, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.removeCartItem(USER_ID, 2L);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).cartItemId()).isEqualTo(1L);
+        assertThat(result.restaurantId()).isEqualTo(1L);
+    }
+
+    @Test
+    void removeCartItem_resetsRestaurant_whenLastLineIsRemoved() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.removeCartItem(USER_ID, 1L);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.restaurantId()).isNull();
+        assertThat(result.total()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void removeCartItem_throwsCartItemNotFound_whenLineBelongsToAnotherUser() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+
+        assertThatThrownBy(() -> cartService.removeCartItem(USER_ID, 42L))
+                .isInstanceOf(CartItemNotFoundException.class)
+                .hasMessage("Cart item not found: 42");
+    }
+
+    @Test
+    void clearCart_removesAllLinesAndResetsRestaurant() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 2, cart);
+        cartItem(2L, foodItem(11L, "Paneer Tikka", "240.00", spiceRoute, true), 1, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CartDTO result = cartService.clearCart(USER_ID);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.restaurantId()).isNull();
+        assertThat(result.total()).isEqualByComparingTo("0.00");
+        assertThat(cart.getItems()).isEmpty();
+    }
+
+    @Test
+    void clearCart_isANoOp_whenUserHasNoCart() {
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        CartDTO result = cartService.clearCart(USER_ID);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.total()).isEqualByComparingTo("0.00");
+        verify(cartRepository, never()).save(any(Cart.class));
+    }
+
+    @Test
+    void clearCart_allowsAddingFromADifferentRestaurantAfterwards() {
+        Restaurant spiceRoute = restaurant(1L, "Spice Route");
+        Restaurant tandoorHouse = restaurant(2L, "Tandoor House");
+        Cart cart = cart(100L, spiceRoute);
+        cartItem(1L, foodItem(10L, "Samosa", "60.00", spiceRoute, true), 1, cart);
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(foodItemRepository.findById(20L))
+                .thenReturn(Optional.of(foodItem(20L, "Naan", "40.00", tandoorHouse, true)));
+
+        cartService.clearCart(USER_ID);
+        CartDTO result = cartService.addItemToCart(USER_ID, new AddToCartRequest(20L, 1));
+
+        // This is the whole point of rule 4 - the 409 message tells the user to clear the
+        // cart, so clearing it must actually unblock them.
+        assertThat(result.restaurantId()).isEqualTo(2L);
+        assertThat(result.items()).hasSize(1);
     }
 }

@@ -8,6 +8,7 @@ import com.foodrush.backend.entity.FoodItem;
 import com.foodrush.backend.entity.Restaurant;
 import com.foodrush.backend.entity.User;
 import com.foodrush.backend.exception.CartConflictException;
+import com.foodrush.backend.exception.CartItemNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.repository.CartRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
@@ -79,6 +80,63 @@ public class CartService {
                     .foodItem(foodItem)
                     .quantity(request.quantity())
                     .build());
+        }
+        return saveAndConvert(cart);
+    }
+
+    @Transactional
+    public CartDTO updateCartItem(Long userId, Long cartItemId, int quantity) {
+        Cart cart = requireCart(userId, cartItemId);
+        CartItem item = requireOwnedItem(cart, cartItemId);
+        if (quantity <= 0) {
+            cart.getItems().remove(item);
+        } else {
+            item.setQuantity(quantity);
+        }
+        return saveAndConvert(cart);
+    }
+
+    @Transactional
+    public CartDTO removeCartItem(Long userId, Long cartItemId) {
+        Cart cart = requireCart(userId, cartItemId);
+        cart.getItems().remove(requireOwnedItem(cart, cartItemId));
+        return saveAndConvert(cart);
+    }
+
+    @Transactional
+    public CartDTO clearCart(Long userId) {
+        return cartRepository.findByUserId(userId)
+                .map(cart -> {
+                    cart.getItems().clear();
+                    return saveAndConvert(cart);
+                })
+                .orElseGet(CartDTO::empty);
+    }
+
+    private Cart requireCart(Long userId, Long cartItemId) {
+        return cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new CartItemNotFoundException("Cart item not found: " + cartItemId));
+    }
+
+    /**
+     * Searching only within the caller's own cart is what enforces ownership: another user's
+     * cart item id simply is not here, and reports as 404 exactly like a nonexistent one, so
+     * existence is never leaked.
+     */
+    private CartItem requireOwnedItem(Cart cart, Long cartItemId) {
+        return cart.getItems().stream()
+                .filter(item -> cartItemId.equals(item.getId()))
+                .findFirst()
+                .orElseThrow(() -> new CartItemNotFoundException("Cart item not found: " + cartItemId));
+    }
+
+    /**
+     * An empty cart releases its restaurant, so a user who empties their cart is not left
+     * locked to the restaurant they just abandoned.
+     */
+    private CartDTO saveAndConvert(Cart cart) {
+        if (cart.getItems().isEmpty()) {
+            cart.setRestaurant(null);
         }
         return CartDTO.from(cartRepository.save(cart));
     }
