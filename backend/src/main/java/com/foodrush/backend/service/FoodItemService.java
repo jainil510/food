@@ -9,6 +9,7 @@ import com.foodrush.backend.entity.Restaurant;
 import com.foodrush.backend.exception.CategoryNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
+import com.foodrush.backend.repository.CartItemRepository;
 import com.foodrush.backend.repository.CategoryRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderItemRepository;
@@ -29,15 +30,18 @@ public class FoodItemService {
     private final RestaurantRepository restaurantRepository;
     private final CategoryRepository categoryRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CartItemRepository cartItemRepository;
 
     public FoodItemService(FoodItemRepository foodItemRepository,
                             RestaurantRepository restaurantRepository,
                             CategoryRepository categoryRepository,
-                            OrderItemRepository orderItemRepository) {
+                            OrderItemRepository orderItemRepository,
+                            CartItemRepository cartItemRepository) {
         this.foodItemRepository = foodItemRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.orderItemRepository = orderItemRepository;
+        this.cartItemRepository = cartItemRepository;
     }
 
     /**
@@ -100,7 +104,9 @@ public class FoodItemService {
 
     /**
      * Soft-deletes (marks unavailable) any item that already appears in order history, so past
-     * orders keep referring to a real row. Items with no order history are removed outright.
+     * orders keep referring to a real row. Items with no order history are removed outright -
+     * and because cart_items.food_item_id is a foreign key, any cart lines holding the item
+     * must go first or the delete fails with a constraint violation.
      */
     @Transactional
     public void deleteFoodItem(Long id) {
@@ -110,6 +116,7 @@ public class FoodItemService {
             foodItemRepository.save(foodItem);
             return;
         }
+        cartItemRepository.deleteByFoodItemId(id);
         foodItemRepository.delete(foodItem);
     }
 

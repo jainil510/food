@@ -9,6 +9,7 @@ import com.foodrush.backend.entity.Restaurant;
 import com.foodrush.backend.exception.CategoryNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
+import com.foodrush.backend.repository.CartItemRepository;
 import com.foodrush.backend.repository.CategoryRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderItemRepository;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,12 +49,16 @@ class FoodItemServiceTest {
     @Mock
     private OrderItemRepository orderItemRepository;
 
+    @Mock
+    private CartItemRepository cartItemRepository;
+
     private FoodItemService foodItemService;
 
     @BeforeEach
     void setUp() {
         foodItemService = new FoodItemService(
-                foodItemRepository, restaurantRepository, categoryRepository, orderItemRepository);
+                foodItemRepository, restaurantRepository, categoryRepository, orderItemRepository,
+                cartItemRepository);
     }
 
     private FoodItem foodItem(Long id, String name, Long categoryId, String categoryName, String price) {
@@ -263,6 +270,35 @@ class FoodItemServiceTest {
 
         verify(foodItemRepository).delete(existing);
         verify(foodItemRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteFoodItem_purgesCartLinesBeforeHardDeleting() {
+        FoodItem existing = foodItem(1L, "Samosa", 10L, "Appetizers", "60.00");
+        when(foodItemRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(orderItemRepository.existsByFoodItemId(1L)).thenReturn(false);
+
+        foodItemService.deleteFoodItem(1L);
+
+        // cart_items.food_item_id is an FK: without this the delete raises
+        // DataIntegrityViolationException and the admin sees a 409.
+        InOrder inOrder = inOrder(cartItemRepository, foodItemRepository);
+        inOrder.verify(cartItemRepository).deleteByFoodItemId(1L);
+        inOrder.verify(foodItemRepository).delete(existing);
+    }
+
+    @Test
+    void deleteFoodItem_leavesCartLinesAlone_whenSoftDeleting() {
+        FoodItem existing = foodItem(1L, "Samosa", 10L, "Appetizers", "60.00");
+        when(foodItemRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(orderItemRepository.existsByFoodItemId(1L)).thenReturn(true);
+
+        foodItemService.deleteFoodItem(1L);
+
+        // The row still exists, so carts holding it stay valid - the line simply reports
+        // isAvailable false and drops out of the cart total.
+        assertThat(existing.isAvailable()).isFalse();
+        verify(cartItemRepository, never()).deleteByFoodItemId(any());
     }
 
     @Test
