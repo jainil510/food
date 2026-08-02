@@ -10,6 +10,7 @@ import com.foodrush.backend.exception.CategoryNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
 import com.foodrush.backend.repository.CartItemRepository;
+import com.foodrush.backend.repository.CartRepository;
 import com.foodrush.backend.repository.CategoryRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderItemRepository;
@@ -52,13 +53,16 @@ class FoodItemServiceTest {
     @Mock
     private CartItemRepository cartItemRepository;
 
+    @Mock
+    private CartRepository cartRepository;
+
     private FoodItemService foodItemService;
 
     @BeforeEach
     void setUp() {
         foodItemService = new FoodItemService(
                 foodItemRepository, restaurantRepository, categoryRepository, orderItemRepository,
-                cartItemRepository);
+                cartItemRepository, cartRepository);
     }
 
     private FoodItem foodItem(Long id, String name, Long categoryId, String categoryName, String price) {
@@ -288,6 +292,23 @@ class FoodItemServiceTest {
     }
 
     @Test
+    void deleteFoodItem_releasesRestaurantFromCartsEmptiedByThePurge() {
+        FoodItem existing = foodItem(1L, "Samosa", 10L, "Appetizers", "60.00");
+        when(foodItemRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(orderItemRepository.existsByFoodItemId(1L)).thenReturn(false);
+
+        foodItemService.deleteFoodItem(1L);
+
+        // The purge bypasses CartService.saveAndConvert, so rule 4 has to be reapplied here or a
+        // cart whose only line held this item keeps restaurant_id set and locks its owner out.
+        // Ordering matters: the lines must be gone before "which carts are empty" is decided.
+        InOrder inOrder = inOrder(cartItemRepository, cartRepository, foodItemRepository);
+        inOrder.verify(cartItemRepository).deleteByFoodItemId(1L);
+        inOrder.verify(cartRepository).clearRestaurantFromEmptyCarts();
+        inOrder.verify(foodItemRepository).delete(existing);
+    }
+
+    @Test
     void deleteFoodItem_leavesCartLinesAlone_whenSoftDeleting() {
         FoodItem existing = foodItem(1L, "Samosa", 10L, "Appetizers", "60.00");
         when(foodItemRepository.findById(1L)).thenReturn(Optional.of(existing));
@@ -299,6 +320,8 @@ class FoodItemServiceTest {
         // isAvailable false and drops out of the cart total.
         assertThat(existing.isAvailable()).isFalse();
         verify(cartItemRepository, never()).deleteByFoodItemId(any());
+        // No line left a cart, so no cart can have been emptied - nothing to release.
+        verify(cartRepository, never()).clearRestaurantFromEmptyCarts();
     }
 
     @Test

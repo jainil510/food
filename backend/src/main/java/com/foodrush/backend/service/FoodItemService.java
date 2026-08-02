@@ -10,6 +10,7 @@ import com.foodrush.backend.exception.CategoryNotFoundException;
 import com.foodrush.backend.exception.FoodItemNotFoundException;
 import com.foodrush.backend.exception.RestaurantNotFoundException;
 import com.foodrush.backend.repository.CartItemRepository;
+import com.foodrush.backend.repository.CartRepository;
 import com.foodrush.backend.repository.CategoryRepository;
 import com.foodrush.backend.repository.FoodItemRepository;
 import com.foodrush.backend.repository.OrderItemRepository;
@@ -31,17 +32,20 @@ public class FoodItemService {
     private final CategoryRepository categoryRepository;
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
+    private final CartRepository cartRepository;
 
     public FoodItemService(FoodItemRepository foodItemRepository,
                             RestaurantRepository restaurantRepository,
                             CategoryRepository categoryRepository,
                             OrderItemRepository orderItemRepository,
-                            CartItemRepository cartItemRepository) {
+                            CartItemRepository cartItemRepository,
+                            CartRepository cartRepository) {
         this.foodItemRepository = foodItemRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartItemRepository = cartItemRepository;
+        this.cartRepository = cartRepository;
     }
 
     /**
@@ -107,6 +111,11 @@ public class FoodItemService {
      * orders keep referring to a real row. Items with no order history are removed outright -
      * and because cart_items.food_item_id is a foreign key, any cart lines holding the item
      * must go first or the delete fails with a constraint violation.
+     *
+     * Purging lines this way bypasses CartService.saveAndConvert, which is where rule 4 (an
+     * empty cart holds no restaurant) is normally enforced. Without the repository call below, a
+     * user whose only cart line was deleted here keeps a cart that looks empty but is still
+     * pinned to the old restaurant, and gets rejected when adding an item from anywhere else.
      */
     @Transactional
     public void deleteFoodItem(Long id) {
@@ -117,6 +126,7 @@ public class FoodItemService {
             return;
         }
         cartItemRepository.deleteByFoodItemId(id);
+        cartRepository.clearRestaurantFromEmptyCarts();
         foodItemRepository.delete(foodItem);
     }
 
