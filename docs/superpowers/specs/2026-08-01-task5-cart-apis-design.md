@@ -162,16 +162,19 @@ the item alone, while the restaurant conflict depends on cart state the user can
 `items`, and `items.foodItem` to avoid N+1 selects when building `CartDTO`.
 
 **`CartItemRepository extends JpaRepository<CartItem, Long>`**
-`Optional<CartItem> findByCartIdAndFoodItemId(Long cartId, Long foodItemId)` for rule 2, and
-`void deleteByFoodItemId(Long foodItemId)` for the Task 4 fix below.
+`void deleteByFoodItemId(Long foodItemId)` for the Task 4 fix below. Used solely by
+`FoodItemService` — `CartService` never depends on it.
 
 `findByCartId` from the task description is deliberately omitted: `Cart.items` already
-provides the same data through the existing `@OneToMany`.
+provides the same data through the existing `@OneToMany`. `findByCartIdAndFoodItemId`,
+originally planned for rule 2, is also omitted: the entity graph on `CartRepository.findByUserId`
+already loads every line, so the merge lookup and the ownership check both scan the
+already-fetched `cart.getItems()` in memory instead of issuing a second query.
 
 **`CartService`** — `getCart`, `addItemToCart`, `updateCartItem`, `removeCartItem`,
 `clearCart`, all returning `CartDTO`. Read path is `@Transactional(readOnly = true)`;
-mutations are `@Transactional`. Depends on `CartRepository`, `CartItemRepository`,
-`FoodItemRepository`, and `UserRepository` (to attach the owner when creating a cart).
+mutations are `@Transactional`. Depends on `CartRepository`, `FoodItemRepository`, and
+`UserRepository` (to attach the owner when creating a cart) — not `CartItemRepository`.
 
 **`CartController`** — `@RequestMapping("/api/cart")`, five thin methods that resolve the
 user via `@AuthenticationPrincipal UserPrincipal` and delegate. The task description
@@ -192,6 +195,13 @@ someone's cart raises `DataIntegrityViolationException` → 409, because
 
 The soft-delete branch (items with order history) is untouched — those items stay in carts
 and surface via rule 6.
+
+**Post-launch addendum:** the final whole-branch review found that purging cart lines this
+way bypasses `CartService.saveAndConvert`, where rule 4 (an empty cart holds no restaurant)
+is normally enforced — a cart whose only line was removed here stayed pinned to the old
+restaurant. `FoodItemService` gained a further `CartRepository` dependency and a call to
+`CartRepository.clearRestaurantFromEmptyCarts()` (a bulk `@Modifying` update) immediately
+after the purge, restoring rule 4 on this path too.
 
 ## Testing
 
