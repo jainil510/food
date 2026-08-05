@@ -81,3 +81,19 @@ Mirrors `AddressServiceTest` / `AddressControllerTest`:
 No `@DataJpaTest`/persistence-layer tests are needed — `UserRepository` gains no new
 derived-query methods (it already has `findById` via `JpaRepository` and `findByEmail`,
 unused here).
+
+## Known Frontend Integration Gap
+
+`PUT /api/users/me/password` returns `401 Unauthorized` when the current password
+doesn't match (per this doc and `tasks.json`'s testStrategy). This is intentional and
+matches the authoritative task spec — do not change it.
+
+However, `frontend/src/contexts/AuthContext.jsx`'s global axios response interceptor
+force-logs-out the user on ANY 401 response, anywhere in the app. Today this endpoint
+isn't called from any frontend code, so the gap is latent. Whichever task builds the
+frontend change-password form (expected: Task 12, Order History & Profile UI) MUST
+exempt this specific request from the interceptor's auto-logout behavior — e.g. by
+checking the request URL/config before triggering logout, or by handling this one
+call's error response before it reaches the global interceptor — so that a user who
+mistypes their current password sees an inline "Current password is incorrect" error
+instead of being silently ejected to the login screen.

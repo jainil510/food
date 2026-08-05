@@ -116,6 +116,16 @@ class UserControllerTest {
     }
 
     @Test
+    void updateProfile_returns400_whenNameTooLong() throws Exception {
+        UpdateProfileRequest request = new UpdateProfileRequest("A".repeat(101), "9123456780");
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void changePassword_returns204_onSuccess() throws Exception {
         ChangePasswordRequest request = new ChangePasswordRequest("old-password", "new-password-123");
 
